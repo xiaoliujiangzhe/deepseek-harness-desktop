@@ -47,12 +47,16 @@ function routeValue(provider: string, model: string): string {
 
 /** Flatten catalog groups into selectable routes in catalog order. */
 function flattenGroups(groups: readonly ModelProviderGroup[]): RouteOption[] {
-  return groups.flatMap(group => group.models.map(model => ({
-    provider: group.id,
-    providerName: group.name,
-    model: model.id,
-    modelName: model.name,
-  })))
+  return groups.flatMap(group => group.models
+    // Only models that declare image input can describe an image; a text-only
+    // pick would fail the vision call later, so it is never offered here.
+    .filter(model => (model.inputModalities ?? []).includes('image'))
+    .map(model => ({
+      provider: group.id,
+      providerName: group.name,
+      model: model.id,
+      modelName: model.name,
+    })))
 }
 
 /** Read one string field from the namespace's resolved value. */

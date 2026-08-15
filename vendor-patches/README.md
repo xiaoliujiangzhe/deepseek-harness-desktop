@@ -31,6 +31,16 @@
    - 背景：apiproxy 的 `settings.describe` 会按白名单过滤命名空间，未列入的即使已注册也会
      返回 `settings-not-exposed`，前端 `state.namespaces.get('vision-fallback')` 就永远是 undefined。
 
+7. **只列出能看图的模型 + 模型「图片输入」开关**
+   - `apiproxy/api/sessions.ts` + `apiproxy/api/sessions.schema.ts` → 给 `ModelCatalogModel` 加
+     `inputModalities` 字段，`llm.models` 接口随模型返回声明的能力。
+   - `apiproxy/api-proxy.ts` → `llm.models` 处理器把 `model.inputModalities` 映射到接口。
+   - `ui-settings-models/VisionModelPicker.tsx` → 下拉框只列 `inputModalities` 含 `image` 的模型。
+   - `ui-settings-models/ModelListEditor.tsx` → 模型编辑行加「图片输入」勾选（写入 `input: [text, image]`）。
+   - `ui-settings-models/locales.ts`、`ModelsSection.module.css` → 对应文案和样式。
+   - 效果：在「模型」页给某个模型勾上「图片输入」，它才会出现在「识图模型」下拉框里，
+     选中即用，无需手改 settings.yaml。
+
 ## 构建（必须在用户本机跑，沙箱禁 pnpm/子进程）
 
 双击项目根的 `setup-harness.cmd`，或手动：
