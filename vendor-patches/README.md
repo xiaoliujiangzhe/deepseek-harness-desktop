@@ -19,6 +19,12 @@
 4. **注册到 host 构建面（关键，否则 tsc -b 不编译、tsdown 报 UNRESOLVED_ENTRY）**
    - `host-tsconfig.json` → 覆盖 `vendor/deepseek-harness/tsconfig.host.json`（在 `references` 里加了 `./packages/llm/llm-vision-fallback`）。
 
+5. **设置界面「识图模型」下拉框（客户端 UI）**
+   - `ui-settings-models/` 目录 → 拷到 `vendor/deepseek-harness/packages/client/ui-settings-models/src/client/`
+   - 新增 `VisionModelPicker.tsx`（读 `llm.models` 目录、写 `vision-fallback` 命名空间）；
+     `ModelsSection.tsx`（挂载该下拉框）、`locales.ts`（加 `visionModel*` 中英文案）为改后成品。
+   - 下拉框仅在 host 暴露 `vision-fallback` 命名空间（即插件已挂载）时才渲染，否则整个隐藏。
+
 ## 构建（必须在用户本机跑，沙箱禁 pnpm/子进程）
 
 双击项目根的 `setup-harness.cmd`，或手动：
@@ -29,9 +35,12 @@ pnpm install
 pnpm run build
 ```
 
-## 配置识图模型（v1 无 UI，改 settings.yaml）
+## 配置识图模型
 
-在 `$DSH_HOME/settings.yaml` 里加：
+**首选：设置 → 模型 → 「识图模型」下拉框**（本目录第 5 条改动，重新构建后生效），
+选好即写入 `vision-fallback` 命名空间，无需手动改文件；选「不启用」即关闭。
+
+等价的手动写法（`$DSH_HOME/settings.yaml`）：
 
 ```yaml
 vision-fallback:
