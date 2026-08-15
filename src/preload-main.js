@@ -134,6 +134,27 @@ function applyTheme(a) {
   }
   themeEl.textContent = buildThemeCss(a);
   console.log('[dsh-desktop] background:', !!(a.background), 'blur:', a.backgroundBlur, 'dim:', a.backgroundDim);
+  // Diagnostic: report what actually landed, so we can see why the wallpaper
+  // does not show through without needing manual DevTools inspection.
+  setTimeout(() => {
+    try {
+      const cs = getComputedStyle(document.body);
+      const root = document.getElementById('root');
+      const rootBg = root ? getComputedStyle(root).backgroundColor : 'n/a';
+      const firstBg = root && root.firstElementChild ? getComputedStyle(root.firstElementChild).backgroundColor : 'n/a';
+      console.log('[dsh-desktop debug]', JSON.stringify({
+        hasBg: !!a.background,
+        bodyBgImage: (cs.backgroundImage || 'none').slice(0, 60),
+        bodyBgColor: cs.backgroundColor,
+        rootBg,
+        rootFirstChildBg: firstBg,
+        bodyH: document.body.offsetHeight,
+        winH: window.innerHeight
+      }));
+    } catch (e) {
+      console.log('[dsh-desktop debug] err', e && e.message);
+    }
+  }, 60);
 }
 
 // ---------- controls styling ----------
