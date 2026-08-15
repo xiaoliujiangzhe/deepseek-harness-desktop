@@ -284,6 +284,8 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    // Remove the default menu bar entirely, so pressing Alt shows nothing.
+    Menu.setApplicationMenu(null);
     createTray();
     createLoadingWindow();
     launchService();
