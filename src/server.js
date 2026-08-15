@@ -61,6 +61,11 @@ function resolveDshBin() {
   // Explicit override (debugging / custom layouts).
   if (process.env.DSH_DESKTOP_BIN) candidates.push(process.env.DSH_DESKTOP_BIN);
 
+  // 正路：优先使用 vendored 源码构建出的 CLI（含识图兜底等改动）。构建后
+  // `vendor/deepseek-harness/apps/cli/lib/bin.js` 才存在；否则回退到 npm 包。
+  const vendoredBin = path.join(__dirname, '..', 'vendor', 'deepseek-harness', 'apps', 'cli', 'lib', 'bin.js');
+  if (fs.existsSync(vendoredBin)) candidates.push(vendoredBin);
+
   // Development / unpackaged: resolve through this app's node_modules.
   try {
     candidates.push(require.resolve('@deepseek-ai/dsh/lib/bin.js'));
