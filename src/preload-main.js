@@ -131,7 +131,11 @@ function applyWallpaperLayer(a) {
     document.body.insertBefore(layer, document.body.firstChild);
   }
   const inner = layer.firstElementChild;
-  if (inner) inner.style.backgroundImage = `url("${a.background}")`;
+  if (inner) {
+    const dim = Math.max(0, Math.min(1, Number(a.backgroundDim) || 0));
+    const dimLayer = dim > 0 ? `linear-gradient(rgba(0, 0, 0, ${dim}), rgba(0, 0, 0, ${dim})), ` : '';
+    inner.style.backgroundImage = `${dimLayer}url("${a.background}")`;
+  }
 }
 
 function fontCss(a) {
@@ -344,7 +348,7 @@ function buildRow() {
   // --- glass opacity (surface transparency) ---
   const opacity = el('input', '');
   opacity.type = 'range'; opacity.min = '0.1'; opacity.max = '0.95'; opacity.step = '0.05';
-  opacity.value = String(state.opacity === undefined ? 0.5 : state.opacity);
+  opacity.value = String(state.opacity === undefined ? 0.7 : state.opacity);
   opacity.addEventListener('input', () => update({ opacity: Number(opacity.value) }));
 
   // --- font ---
@@ -392,7 +396,7 @@ function buildRow() {
   row.appendChild(bgField);
   row.appendChild(field('背景模糊（像素）', blur));
   row.appendChild(field('背景变暗（0=不变）', dim));
-  row.appendChild(field('界面透明度（越低越透）', opacity, '默认 0.5，调到 0.2 左右图片就很清楚'));
+  row.appendChild(field('界面透明度（越低越透）', opacity, '默认 0.7；调低更透、调高文字更稳'));
   row.appendChild(field('界面字体', fontFamily));
   row.appendChild(field('字号', fontSize));
   row.appendChild(field('布局密度', density));
