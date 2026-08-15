@@ -1,32 +1,34 @@
 @echo off
 rem ============================================================
-rem  DeepSeek Harness 首次安装 / 修复脚本（仅在第一次使用或出问题时双击）
-rem  作用：安装依赖并下载 Electron 运行时，之后即可双击 .vbs 或快捷方式启动。
+rem  DeepSeek Harness - first-time setup / repair script
+rem  Run this once (or when something is broken). It installs
+rem  dependencies and downloads the Electron runtime.
 rem ============================================================
 setlocal
 cd /d "%~dp0"
 
 echo.
-echo [1/2] 检查 Node.js ...
+echo [1/2] Checking Node.js ...
 where node >nul 2>nul
 if errorlevel 1 (
-    echo   未检测到 Node.js。请先到 https://nodejs.org 安装 LTS 版本，然后重新双击本脚本。
+    echo   Node.js not found. Install the LTS version from https://nodejs.org
+    echo   and then run this script again.
     pause
     exit /b 1
 )
-echo   Node.js 已就绪。
+echo   Node.js OK.
 
 echo.
-echo [2/2] 安装依赖（首次运行约需数分钟，请耐心等待）...
+echo [2/2] Installing dependencies (first run takes a few minutes) ...
 call npm install
 if errorlevel 1 (
     echo.
-    echo   安装失败，请把上面的报错截图反馈。
+    echo   Install failed. Please screenshot the error above and report it.
     pause
     exit /b 1
 )
 
 echo.
-echo   安装完成！现在可以双击 "启动 DeepSeek Harness.vbs" 或桌面快捷方式启动。
+echo   Done. You can now launch the app from the VBS launcher or the desktop shortcut.
 pause
 endlocal
