@@ -33,6 +33,7 @@ function loadSettings() {
       background: '',
       backgroundBlur: 0,
       backgroundDim: 0,
+      opacity: 0.5,
       fontFamily: '',
       fontSize: '',
       density: ''
@@ -306,6 +307,7 @@ ipcMain.handle('appearance:save', (_event, appearance) => {
     background: (appearance && appearance.background) || '',
     backgroundBlur: Number(appearance && appearance.backgroundBlur) || 0,
     backgroundDim: Number(appearance && appearance.backgroundDim) || 0,
+    opacity: appearance && appearance.opacity !== undefined ? Number(appearance.opacity) : 0.5,
     fontFamily: (appearance && appearance.fontFamily) || '',
     fontSize: (appearance && appearance.fontSize) || '',
     density: (appearance && appearance.density) || ''

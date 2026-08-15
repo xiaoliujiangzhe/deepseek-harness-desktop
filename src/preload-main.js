@@ -15,6 +15,7 @@ const DEFAULTS = {
   background: '',    // data URL of the background image
   backgroundBlur: 0, // px
   backgroundDim: 0,  // 0..1 dark overlay over the image
+  opacity: 0.5,      // 0..1 surface opacity (lower = see-through)
   fontFamily: '',
   fontSize: '',
   density: ''        // '' | 'compact' | 'cozy'
@@ -67,6 +68,10 @@ function accentCss(c) {
 function backgroundCss(a) {
   const blur = Number(a.backgroundBlur) || 0;
   const dim = Math.max(0, Math.min(1, Number(a.backgroundDim) || 0));
+  const op = a.opacity === undefined ? 0.5 : Math.max(0.1, Math.min(0.95, Number(a.opacity) || 0.5));
+  const op1 = Math.max(0.08, op * 0.85).toFixed(3);
+  const op2 = Math.max(0.08, op * 0.7).toFixed(3);
+  const op3 = Math.max(0.08, op * 0.8).toFixed(3);
   const dimGradient = dim > 0 ? `linear-gradient(rgba(0,0,0,${dim}), rgba(0,0,0,${dim})), ` : '';
   let css = `
 html, body { background-color: transparent !important; }
@@ -85,18 +90,18 @@ body {
   // because the theme sets these alias tokens as inline styles on `<body>`.
   css += `
 body {
-  --dsw-alias-bg-base: rgba(255, 255, 255, 0.82) !important;
-  --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.68) !important;
-  --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.55) !important;
-  --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.65) !important;
-  --dsw-specific-sidebar-fill: rgba(255, 255, 255, 0.68) !important;
+  --dsw-alias-bg-base: rgba(255, 255, 255, ${op}) !important;
+  --dsw-alias-bg-layer-1: rgba(255, 255, 255, ${op1}) !important;
+  --dsw-alias-bg-layer-2: rgba(255, 255, 255, ${op2}) !important;
+  --dsw-alias-bg-layer-3: rgba(255, 255, 255, ${op3}) !important;
+  --dsw-specific-sidebar-fill: rgba(255, 255, 255, ${op1}) !important;
 }
 body[data-ds-dark-theme] {
-  --dsw-alias-bg-base: rgba(16, 18, 27, 0.82) !important;
-  --dsw-alias-bg-layer-1: rgba(25, 28, 40, 0.68) !important;
-  --dsw-alias-bg-layer-2: rgba(32, 35, 50, 0.55) !important;
-  --dsw-alias-bg-layer-3: rgba(34, 37, 52, 0.65) !important;
-  --dsw-specific-sidebar-fill: rgba(22, 25, 36, 0.68) !important;
+  --dsw-alias-bg-base: rgba(16, 18, 27, ${op}) !important;
+  --dsw-alias-bg-layer-1: rgba(25, 28, 40, ${op1}) !important;
+  --dsw-alias-bg-layer-2: rgba(32, 35, 50, ${op2}) !important;
+  --dsw-alias-bg-layer-3: rgba(34, 37, 52, ${op3}) !important;
+  --dsw-specific-sidebar-fill: rgba(22, 25, 36, ${op1}) !important;
 }
 `;
   return css;
@@ -141,15 +146,25 @@ function applyTheme(a) {
       const cs = getComputedStyle(document.body);
       const root = document.getElementById('root');
       const rootBg = root ? getComputedStyle(root).backgroundColor : 'n/a';
-      const firstBg = root && root.firstElementChild ? getComputedStyle(root.firstElementChild).backgroundColor : 'n/a';
+      const layers = [];
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      for (const el of document.querySelectorAll('body *')) {
+        if (layers.length >= 8) break;
+        const r = el.getBoundingClientRect();
+        if (r.width < vw * 0.5 || r.height < vh * 0.5) continue;
+        const bg = getComputedStyle(el).backgroundColor;
+        if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') continue;
+        const cls = (typeof el.className === 'string' ? el.className : '').slice(0, 30);
+        layers.push({ t: el.tagName.toLowerCase(), c: cls, bg });
+      }
       console.log('[dsh-desktop debug]', JSON.stringify({
         hasBg: !!a.background,
-        bodyBgImage: (cs.backgroundImage || 'none').slice(0, 60),
+        opacity: a.opacity,
+        bodyBgImage: (cs.backgroundImage || 'none').slice(0, 40),
         bodyBgColor: cs.backgroundColor,
         rootBg,
-        rootFirstChildBg: firstBg,
-        bodyH: document.body.offsetHeight,
-        winH: window.innerHeight
+        opaqueLayers: layers
       }));
     } catch (e) {
       console.log('[dsh-desktop debug] err', e && e.message);
@@ -268,6 +283,12 @@ function buildRow() {
   dim.type = 'range'; dim.min = '0'; dim.max = '1'; dim.step = '0.05'; dim.value = String(state.backgroundDim || 0);
   dim.addEventListener('input', () => update({ backgroundDim: Number(dim.value) }));
 
+  // --- glass opacity (surface transparency) ---
+  const opacity = el('input', '');
+  opacity.type = 'range'; opacity.min = '0.1'; opacity.max = '0.95'; opacity.step = '0.05';
+  opacity.value = String(state.opacity === undefined ? 0.5 : state.opacity);
+  opacity.addEventListener('input', () => update({ opacity: Number(opacity.value) }));
+
   // --- font ---
   const fontFamily = el('input', '');
   fontFamily.type = 'text'; fontFamily.placeholder = '例如 Microsoft YaHei'; fontFamily.value = state.fontFamily || '';
@@ -313,6 +334,7 @@ function buildRow() {
   row.appendChild(bgField);
   row.appendChild(field('背景模糊（像素）', blur));
   row.appendChild(field('背景变暗（0=不变）', dim));
+  row.appendChild(field('界面透明度（越低越透）', opacity, '默认 0.5，调到 0.2 左右图片就很清楚'));
   row.appendChild(field('界面字体', fontFamily));
   row.appendChild(field('字号', fontSize));
   row.appendChild(field('布局密度', density));
