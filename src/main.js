@@ -12,7 +12,6 @@ const MAIN_WINDOW_DEFAULT_SIZE = { width: 1360, height: 860 };
 
 let loadingWindow = null;
 let mainWindow = null;
-let appearanceWindow = null;
 let tray = null;
 let service = null;
 let quitting = false;
@@ -28,7 +27,16 @@ function loadSettings() {
   const defaults = {
     workspace: os.homedir(),
     port: 0, // 0 = let the OS pick a free port
-    appearance: { accent: '', customCss: '' }
+    appearance: {
+      accent: '',
+      customCss: '',
+      background: '',
+      backgroundBlur: 0,
+      backgroundDim: 0,
+      fontFamily: '',
+      fontSize: '',
+      density: ''
+    }
   };
   try {
     if (fs.existsSync(file)) {
@@ -127,7 +135,6 @@ function createTray() {
         if (currentWorkspace) shell.openPath(currentWorkspace);
       }
     },
-    { label: '外观设置', click: () => createAppearanceWindow() },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() }
   ]);
@@ -136,38 +143,6 @@ function createTray() {
   // Left-click toggles show/hide; double-click also shows.
   tray.on('click', () => toggleMainWindow());
   tray.on('double-click', () => showMainWindow());
-}
-
-function createAppearanceWindow() {
-  if (appearanceWindow && !appearanceWindow.isDestroyed()) {
-    appearanceWindow.show();
-    appearanceWindow.focus();
-    return;
-  }
-  appearanceWindow = new BrowserWindow({
-    width: 520,
-    height: 620,
-    minWidth: 420,
-    minHeight: 500,
-    resizable: true,
-    show: false,
-    center: true,
-    autoHideMenuBar: true,
-    title: '外观设置',
-    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
-    webPreferences: {
-      preload: path.join(__dirname, 'preload-appearance.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
-  });
-
-  appearanceWindow.loadFile(path.join(__dirname, 'appearance.html'));
-  appearanceWindow.once('ready-to-show', () => appearanceWindow && appearanceWindow.show());
-  appearanceWindow.on('closed', () => {
-    appearanceWindow = null;
-  });
 }
 
 function createMainWindow(url) {
@@ -321,7 +296,13 @@ ipcMain.handle('appearance:save', (_event, appearance) => {
   const settings = loadSettings();
   settings.appearance = {
     accent: (appearance && appearance.accent) || '',
-    customCss: (appearance && appearance.customCss) || ''
+    customCss: (appearance && appearance.customCss) || '',
+    background: (appearance && appearance.background) || '',
+    backgroundBlur: Number(appearance && appearance.backgroundBlur) || 0,
+    backgroundDim: Number(appearance && appearance.backgroundDim) || 0,
+    fontFamily: (appearance && appearance.fontFamily) || '',
+    fontSize: (appearance && appearance.fontSize) || '',
+    density: (appearance && appearance.density) || ''
   };
   writeSettings(settings);
   if (mainWindow && !mainWindow.isDestroyed()) {
