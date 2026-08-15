@@ -15,7 +15,7 @@ const DEFAULTS = {
   background: '',    // data URL of the background image
   backgroundBlur: 0, // px
   backgroundDim: 0,  // 0..1 dark overlay over the image
-  opacity: 0.5,      // 0..1 surface opacity (lower = see-through)
+  opacity: 0.7,      // 0..1 surface solidity (lower = see-through)
   fontFamily: '',
   fontSize: '',
   density: ''        // '' | 'compact' | 'cozy'
@@ -63,48 +63,75 @@ function accentCss(c) {
 `;
 }
 
-/** Background image + dim + translucent surfaces, applied to `<body>`'s own
- *  background (painted behind all content — no z-index games). */
-function backgroundCss(a) {
-  const blur = Number(a.backgroundBlur) || 0;
-  const dim = Math.max(0, Math.min(1, Number(a.backgroundDim) || 0));
-  const op = a.opacity === undefined ? 0.5 : Math.max(0.1, Math.min(0.95, Number(a.opacity) || 0.5));
-  const op1 = Math.max(0.08, op * 0.85).toFixed(3);
-  const op2 = Math.max(0.08, op * 0.7).toFixed(3);
-  const op3 = Math.max(0.08, op * 0.8).toFixed(3);
-  const dimGradient = dim > 0 ? `linear-gradient(rgba(0,0,0,${dim}), rgba(0,0,0,${dim})), ` : '';
-  let css = `
-html, body { background-color: transparent !important; }
+/** Layered surface transparency (faithful port of the reference repo's
+ *  `mixWallpaperSurfaces`). Only the main canvas becomes strongly see-through;
+ *  the raised surfaces that carry text (cards, composer) keep their solidity,
+ *  so text stays readable over the wallpaper. */
+function surfaceCss(a) {
+  const op = a.opacity === undefined ? 0.7 : Math.max(0.1, Math.min(0.95, Number(a.opacity) || 0.7));
+  const kept = Math.round(op * 100); // glass solidity percent
+  let canvas;
+  if (kept <= 40) canvas = Math.round(kept * 0.375);
+  else if (kept <= 80) canvas = Math.round(15 + (kept - 40) * 0.75);
+  else canvas = Math.round(45 + (kept - 80) * 2.75);
+  const sidebar = Math.round((canvas + kept) / 2);
+
+  const lightBase = 'var(--dsw-static-neutral-bluish-00)';
+  const darkBase = 'var(--dsw-static-neutral-bluish-950)';
+  const darkRaised = 'var(--dsw-static-neutral-bluish-875)';
+
+  return `
 body {
-  background-image: ${dimGradient}url("${a.background}") !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-attachment: fixed !important;
-}
-`;
-  if (blur > 0) {
-    css += `#root { backdrop-filter: blur(${blur}px); -webkit-backdrop-filter: blur(${blur}px); }\n`;
-  }
-  // Make surfaces translucent so the image shows through. Targets `body`
-  // because the theme sets these alias tokens as inline styles on `<body>`.
-  css += `
-body {
-  --dsw-alias-bg-base: rgba(255, 255, 255, ${op}) !important;
-  --dsw-alias-bg-layer-1: rgba(255, 255, 255, ${op1}) !important;
-  --dsw-alias-bg-layer-2: rgba(255, 255, 255, ${op2}) !important;
-  --dsw-alias-bg-layer-3: rgba(255, 255, 255, ${op3}) !important;
-  --dsw-specific-sidebar-fill: rgba(255, 255, 255, ${op1}) !important;
+  --dsw-alias-bg-base: color-mix(in srgb, ${lightBase} ${canvas}%, transparent) !important;
+  --dsw-alias-bg-layer-1: color-mix(in srgb, ${lightBase} ${kept}%, transparent) !important;
+  --dsw-alias-bg-layer-2: color-mix(in srgb, ${lightBase} ${kept}%, transparent) !important;
+  --dsw-alias-bg-layer-3: color-mix(in srgb, ${lightBase} ${kept}%, transparent) !important;
+  --dsw-specific-sidebar-fill: color-mix(in srgb, ${lightBase} ${sidebar}%, transparent) !important;
 }
 body[data-ds-dark-theme] {
-  --dsw-alias-bg-base: rgba(16, 18, 27, ${op}) !important;
-  --dsw-alias-bg-layer-1: rgba(25, 28, 40, ${op1}) !important;
-  --dsw-alias-bg-layer-2: rgba(32, 35, 50, ${op2}) !important;
-  --dsw-alias-bg-layer-3: rgba(34, 37, 52, ${op3}) !important;
-  --dsw-specific-sidebar-fill: rgba(22, 25, 36, ${op1}) !important;
+  --dsw-alias-bg-base: color-mix(in srgb, ${darkBase} ${canvas}%, transparent) !important;
+  --dsw-alias-bg-layer-1: color-mix(in srgb, ${darkRaised} ${kept}%, transparent) !important;
+  --dsw-alias-bg-layer-2: color-mix(in srgb, ${darkRaised} ${kept}%, transparent) !important;
+  --dsw-alias-bg-layer-3: color-mix(in srgb, ${darkRaised} ${kept}%, transparent) !important;
+  --dsw-specific-sidebar-fill: color-mix(in srgb, ${darkRaised} ${sidebar}%, transparent) !important;
 }
 `;
-  return css;
+}
+
+const WALLPAPER_LAYER_ID = 'dsh-wallpaper';
+const WALLPAPER_INNER_ID = 'dsh-wallpaper-inner';
+const WALLPAPER_ATTR = 'data-dsh-wallpaper';
+const WALLPAPER_BLEED = 48;
+
+/** Manage the fixed wallpaper layer (image + blur), painted behind `#root`. */
+function applyWallpaperLayer(a) {
+  const root = document.documentElement;
+  if (!root || !document.body) return;
+
+  if (!a.background) {
+    root.removeAttribute(WALLPAPER_ATTR);
+    root.style.removeProperty('--dsh-wallpaper-blur');
+    const layer = document.getElementById(WALLPAPER_LAYER_ID);
+    if (layer) layer.remove();
+    return;
+  }
+
+  root.setAttribute(WALLPAPER_ATTR, '');
+  const blurPx = Number(a.backgroundBlur) || 0;
+  root.style.setProperty('--dsh-wallpaper-blur', `${blurPx}px`);
+
+  let layer = document.getElementById(WALLPAPER_LAYER_ID);
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = WALLPAPER_LAYER_ID;
+    layer.setAttribute('aria-hidden', 'true');
+    const inner = document.createElement('div');
+    inner.id = WALLPAPER_INNER_ID;
+    layer.appendChild(inner);
+    document.body.insertBefore(layer, document.body.firstChild);
+  }
+  const inner = layer.firstElementChild;
+  if (inner) inner.style.backgroundImage = `url("${a.background}")`;
 }
 
 function fontCss(a) {
@@ -123,7 +150,7 @@ function densityCss(density) {
 function buildThemeCss(a) {
   let css = '';
   if (a.accent) css += accentCss(a.accent);
-  if (a.background) css += backgroundCss(a);
+  if (a.background) css += surfaceCss(a);
   if (a.fontFamily || a.fontSize) css += fontCss(a);
   if (a.density) css += densityCss(a.density);
   if (a.customCss) css += `\n/* --- custom CSS --- */\n${a.customCss}\n`;
@@ -138,6 +165,7 @@ function applyTheme(a) {
     (document.head || document.documentElement).appendChild(themeEl);
   }
   themeEl.textContent = buildThemeCss(a);
+  applyWallpaperLayer(a);
   console.log('[dsh-desktop] background:', !!(a.background), 'blur:', a.backgroundBlur, 'dim:', a.backgroundDim);
   // Diagnostic: report what actually landed, so we can see why the wallpaper
   // does not show through without needing manual DevTools inspection.
@@ -196,11 +224,41 @@ const CONTROLS_CSS = `
 .dshd-hint { font-size: 11px; opacity: 0.5; }
 `;
 
+const WALLPAPER_CSS = `
+#${WALLPAPER_LAYER_ID} {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+#${WALLPAPER_INNER_ID} {
+  position: absolute;
+  left: -${WALLPAPER_BLEED}px;
+  top: -${WALLPAPER_BLEED}px;
+  width: calc(100% + ${WALLPAPER_BLEED * 2}px);
+  height: calc(100% + ${WALLPAPER_BLEED * 2}px);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: blur(var(--dsh-wallpaper-blur, 0px));
+}
+html[${WALLPAPER_ATTR}],
+html[${WALLPAPER_ATTR}] body,
+html[${WALLPAPER_ATTR}] #root {
+  background: transparent !important;
+}
+html[${WALLPAPER_ATTR}] #root {
+  position: relative;
+  z-index: 1;
+}
+`;
+
 function injectControlsCss() {
   if (document.getElementById('dsh-desktop-controls-css')) return;
   const s = document.createElement('style');
   s.id = 'dsh-desktop-controls-css';
-  s.textContent = CONTROLS_CSS;
+  s.textContent = CONTROLS_CSS + WALLPAPER_CSS;
   (document.head || document.documentElement).appendChild(s);
 }
 
