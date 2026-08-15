@@ -16,6 +16,9 @@
    - `base-cordis.patch.yml` → 覆盖 `vendor/deepseek-harness/packages/bundle/base/cordis.patch.yml`（加了 `llm-vision-fallback` 条目）。
    - `base-package.json` → 覆盖 `vendor/deepseek-harness/packages/bundle/base/package.json`（加了 `@deepseek-ai/dsh-llm-vision-fallback: workspace:^` 依赖）。
 
+4. **注册到 host 构建面（关键，否则 tsc -b 不编译、tsdown 报 UNRESOLVED_ENTRY）**
+   - `host-tsconfig.json` → 覆盖 `vendor/deepseek-harness/tsconfig.host.json`（在 `references` 里加了 `./packages/llm/llm-vision-fallback`）。
+
 ## 构建（必须在用户本机跑，沙箱禁 pnpm/子进程）
 
 双击项目根的 `setup-harness.cmd`，或手动：
