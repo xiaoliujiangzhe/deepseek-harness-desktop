@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>外观设置</title>
+  <link rel="stylesheet" href="appearance.css" />
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="title">外观设置</h1>
+    <p class="hint">这些设置会实时应用到主界面，保存后立即生效。</p>
+
+    <section>
+      <h2>强调色</h2>
+      <div class="swatches" id="swatches"></div>
+      <div class="accent-row">
+        <label class="accent-label" for="accent">自定义颜色</label>
+        <input type="color" id="accent" value="#4176e6" />
+        <button class="ghost" id="resetAccent">恢复默认</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>自定义 CSS（高级）</h2>
+      <p class="hint">粘贴任意 CSS，可改字体、背景、配色等。例如：<br />
+        <code>body { font-family: "Microsoft YaHei"; }</code>
+      </p>
+      <textarea id="css" spellcheck="false" placeholder="/* 在这里写你的自定义样式 */"></textarea>
+    </section>
+
+    <div class="actions">
+      <button class="ghost" id="cancel">取消</button>
+      <button class="primary" id="save">保存</button>
+    </div>
+  </div>
+
+  <script src="appearance.js"></script>
+</body>
+</html>
