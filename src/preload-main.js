@@ -312,17 +312,34 @@ function buildRow() {
 // ---------- injection ----------
 
 function tryInject() {
-  if (document.getElementById(ROW_ID)) return;
-  const anchor = document.querySelector('[data-slot="settings.general.item"]');
-  if (!anchor) return;
-  const section = anchor.parentElement;
-  if (!section) return;
-  section.appendChild(buildRow());
+  try {
+    if (document.getElementById(ROW_ID)) return;
+    const anchors = document.querySelectorAll('[data-slot="settings.general.item"]');
+    if (anchors.length === 0) return;
+    const anchor = anchors[anchors.length - 1];
+    const section = anchor.parentElement;
+    if (!section) return;
+    section.appendChild(buildRow());
+  } catch {
+    /* ignore transient DOM races */
+  }
 }
 
 // ---------- boot ----------
 
-injectControlsCss();
+function boot() {
+  injectControlsCss();
+
+  const root = document.documentElement || document.body || document;
+  if (root) {
+    const mo = new MutationObserver(tryInject);
+    mo.observe(root, { childList: true, subtree: true });
+  }
+  // Safety net: re-inject if React reconciles the section and drops our row.
+  setInterval(tryInject, 800);
+  tryInject();
+}
+
 ipcRenderer.invoke('appearance:get').then((a) => {
   state = { ...DEFAULTS, ...(a || {}) };
   applyTheme(state);
@@ -332,6 +349,8 @@ ipcRenderer.on('appearance:update', (_e, a) => {
   applyTheme(state);
 });
 
-const observer = new MutationObserver(() => tryInject());
-observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
-tryInject();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}

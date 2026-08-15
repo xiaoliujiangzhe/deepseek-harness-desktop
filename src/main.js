@@ -135,6 +135,12 @@ function createTray() {
         if (currentWorkspace) shell.openPath(currentWorkspace);
       }
     },
+    {
+      label: '开发者工具',
+      click: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.toggleDevTools();
+      }
+    },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() }
   ]);
