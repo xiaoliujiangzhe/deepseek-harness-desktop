@@ -69,13 +69,13 @@ function backgroundCss(a) {
   const dim = Math.max(0, Math.min(1, Number(a.backgroundDim) || 0));
   const dimGradient = dim > 0 ? `linear-gradient(rgba(0,0,0,${dim}), rgba(0,0,0,${dim})), ` : '';
   let css = `
-html, body { background: transparent !important; min-height: 100%; }
+html, body { background-color: transparent !important; }
 body {
-  background-image: ${dimGradient}url("${a.background}");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background-image: ${dimGradient}url("${a.background}") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
 }
 `;
   if (blur > 0) {
