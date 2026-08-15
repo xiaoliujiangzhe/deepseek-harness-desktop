@@ -8,3 +8,5 @@ Thumbs.db
 .electron-cache/
 # 桌面快捷方式（内含本机绝对路径，不适合提交；用 .vbs 作为可移植启动器）
 *.lnk
+# 重编译正路：vendored Harness 源码与构建产物（本机构建，不入库）
+vendor/
