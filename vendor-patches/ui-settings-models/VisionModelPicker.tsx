@@ -77,10 +77,9 @@ export function VisionModelPicker(props: VisionModelPickerProps): ReactNode {
   const [loadFailure, setLoadFailure] = useState<string | undefined>(undefined)
   const [saveFailure, setSaveFailure] = useState<string | undefined>(undefined)
   const [saving, setSaving] = useState(false)
-  const enabled = namespace !== undefined
 
   useEffect(() => {
-    if (!enabled) return
+    if (namespace === undefined) return
     let cancelled = false
     void api.llm.models({})
       .then((response) => {
@@ -95,7 +94,10 @@ export function VisionModelPicker(props: VisionModelPickerProps): ReactNode {
         if (!cancelled) setLoadFailure(messageOf(error))
       })
     return () => { cancelled = true }
-  }, [api, enabled])
+  // Re-fetch whenever the section reloads (the namespace view is rebuilt on
+  // each load), so a model whose image-input flag was just toggled appears in
+  // the picker without leaving and re-entering the page.
+  }, [api, namespace])
 
   if (namespace === undefined) return null
 
