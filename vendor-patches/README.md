@@ -25,6 +25,12 @@
      `ModelsSection.tsx`（挂载该下拉框）、`locales.ts`（加 `visionModel*` 中英文案）为改后成品。
    - 下拉框仅在 host 暴露 `vision-fallback` 命名空间（即插件已挂载）时才渲染，否则整个隐藏。
 
+6. **apiproxy 暴露白名单（关键，否则设置接口把 vision-fallback 过滤掉、下拉框永远看不到）**
+   - `apiproxy/api-proxy.ts` → 覆盖 `vendor/deepseek-harness/packages/host/apiproxy/src/api-proxy.ts`
+   - 把 `'vision-fallback'` 加进 `WEB_SETTINGS_NAMESPACES`（第 126 行附近的数组）。
+   - 背景：apiproxy 的 `settings.describe` 会按白名单过滤命名空间，未列入的即使已注册也会
+     返回 `settings-not-exposed`，前端 `state.namespaces.get('vision-fallback')` 就永远是 undefined。
+
 ## 构建（必须在用户本机跑，沙箱禁 pnpm/子进程）
 
 双击项目根的 `setup-harness.cmd`，或手动：
