@@ -62,53 +62,68 @@ function accentCss(c) {
 `;
 }
 
-function backgroundCss(a) {
-  const blur = Number(a.backgroundBlur) || 0;
-  const dim = Math.max(0, Math.min(1, Number(a.backgroundDim) || 0));
-  let css = `
+/** Translucent surface tokens so a background image can show through.
+ *  Targets `body` because the theme sets these alias tokens as inline styles
+ *  on `<body>` (a `:root` rule would be shadowed). */
+function surfaceCss() {
+  return `
 html, body { background: transparent !important; }
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image: url("${a.background}");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: blur(${blur}px);
-  transform: scale(1.05);
-}
-`;
-  if (dim > 0) {
-    css += `
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: rgba(0, 0, 0, ${dim});
-}
-`;
-  }
-  // Make the main surfaces translucent so the image shows through (best-effort).
-  css += `
-:root {
-  --dsw-alias-bg-base: rgba(255, 255, 255, 0.88) !important;
-  --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.72) !important;
-  --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.6) !important;
-  --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.7) !important;
-  --dsw-specific-sidebar-fill: rgba(255, 255, 255, 0.72) !important;
+body {
+  --dsw-alias-bg-base: rgba(255, 255, 255, 0.82) !important;
+  --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.68) !important;
+  --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.55) !important;
+  --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.65) !important;
+  --dsw-specific-sidebar-fill: rgba(255, 255, 255, 0.68) !important;
 }
 body[data-ds-dark-theme] {
-  --dsw-alias-bg-base: rgba(16, 18, 27, 0.86) !important;
-  --dsw-alias-bg-layer-1: rgba(25, 28, 40, 0.72) !important;
-  --dsw-alias-bg-layer-2: rgba(32, 35, 50, 0.6) !important;
-  --dsw-alias-bg-layer-3: rgba(34, 37, 52, 0.7) !important;
-  --dsw-specific-sidebar-fill: rgba(22, 25, 36, 0.72) !important;
+  --dsw-alias-bg-base: rgba(16, 18, 27, 0.82) !important;
+  --dsw-alias-bg-layer-1: rgba(25, 28, 40, 0.68) !important;
+  --dsw-alias-bg-layer-2: rgba(32, 35, 50, 0.55) !important;
+  --dsw-alias-bg-layer-3: rgba(34, 37, 52, 0.65) !important;
+  --dsw-specific-sidebar-fill: rgba(22, 25, 36, 0.68) !important;
 }
 `;
-  return css;
+}
+
+let bgEl = null;
+let dimEl = null;
+
+function applyBackground(a) {
+  const root = document.body;
+  if (!root) return;
+
+  if (a.background) {
+    if (!bgEl) {
+      bgEl = document.createElement('div');
+      bgEl.id = 'dsh-desktop-bg';
+      bgEl.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;';
+      root.insertBefore(bgEl, root.firstChild);
+    }
+    const blur = Number(a.backgroundBlur) || 0;
+    bgEl.style.backgroundImage = `url("${a.background}")`;
+    bgEl.style.backgroundSize = 'cover';
+    bgEl.style.backgroundPosition = 'center';
+    bgEl.style.backgroundRepeat = 'no-repeat';
+    bgEl.style.filter = blur > 0 ? `blur(${blur}px)` : 'none';
+    bgEl.style.transform = 'scale(1.05)';
+  } else if (bgEl) {
+    bgEl.remove();
+    bgEl = null;
+  }
+
+  const dim = Math.max(0, Math.min(1, Number(a.backgroundDim) || 0));
+  if (a.background && dim > 0) {
+    if (!dimEl) {
+      dimEl = document.createElement('div');
+      dimEl.id = 'dsh-desktop-dim';
+      dimEl.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;';
+      root.insertBefore(dimEl, root.firstChild);
+    }
+    dimEl.style.background = `rgba(0, 0, 0, ${dim})`;
+  } else if (dimEl) {
+    dimEl.remove();
+    dimEl = null;
+  }
 }
 
 function fontCss(a) {
@@ -127,7 +142,7 @@ function densityCss(density) {
 function buildThemeCss(a) {
   let css = '';
   if (a.accent) css += accentCss(a.accent);
-  if (a.background) css += backgroundCss(a);
+  if (a.background) css += surfaceCss();
   if (a.fontFamily || a.fontSize) css += fontCss(a);
   if (a.density) css += densityCss(a.density);
   if (a.customCss) css += `\n/* --- custom CSS --- */\n${a.customCss}\n`;
@@ -142,6 +157,7 @@ function applyTheme(a) {
     (document.head || document.documentElement).appendChild(themeEl);
   }
   themeEl.textContent = buildThemeCss(a);
+  applyBackground(a);
 }
 
 // ---------- controls styling ----------
