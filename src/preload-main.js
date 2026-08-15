@@ -96,7 +96,7 @@ function applyBackground(a) {
     if (!bgEl) {
       bgEl = document.createElement('div');
       bgEl.id = 'dsh-desktop-bg';
-      bgEl.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;';
+      bgEl.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;';
       root.insertBefore(bgEl, root.firstChild);
     }
     const blur = Number(a.backgroundBlur) || 0;
@@ -116,14 +116,17 @@ function applyBackground(a) {
     if (!dimEl) {
       dimEl = document.createElement('div');
       dimEl.id = 'dsh-desktop-dim';
-      dimEl.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;';
-      root.insertBefore(dimEl, root.firstChild);
+      dimEl.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;';
+      // Insert right after the image layer so it paints above the image but below the app.
+      root.insertBefore(dimEl, bgEl ? bgEl.nextSibling : root.firstChild);
     }
     dimEl.style.background = `rgba(0, 0, 0, ${dim})`;
   } else if (dimEl) {
     dimEl.remove();
     dimEl = null;
   }
+
+  console.log('[dsh-desktop] background:', !!(a.background), 'blur:', a.backgroundBlur, 'dim:', a.backgroundDim);
 }
 
 function fontCss(a) {
