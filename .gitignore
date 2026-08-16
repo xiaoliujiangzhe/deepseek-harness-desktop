@@ -5,6 +5,7 @@ dist/
 .DS_Store
 Thumbs.db
 .npm-cache/
+.pnpm-store/
 .electron-cache/
 # 桌面快捷方式（内含本机绝对路径，不适合提交；用 .vbs 作为可移植启动器）
 *.lnk

@@ -48,6 +48,7 @@
 ```powershell
 cd vendor\deepseek-harness
 pnpm install
+pnpm run gen-persistence-catalog   # 关键：把 vision/describe 加进事件目录，否则会话重开报 SessionFormatUnsupportedError
 pnpm run build
 ```
 

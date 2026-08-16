@@ -17,6 +17,7 @@
 git clone --depth 1 --branch master https://github.com/deepseek-ai/deepseek-harness.git vendor\deepseek-harness
 cd vendor\deepseek-harness
 pnpm install
+pnpm run gen-persistence-catalog   # 关键：把 vision/describe 加进事件目录，否则会话重开报 SessionFormatUnsupportedError
 pnpm run build          # 或 pnpm run build:lib:client（只编客户端 lib）
 ```
 

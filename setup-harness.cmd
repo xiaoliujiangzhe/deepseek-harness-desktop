@@ -35,7 +35,21 @@ if errorlevel 1 (
 )
 
 echo.
-echo [3/3] Building harness (slow) ...
+echo [3/4] Regenerating persistence catalog ...
+rem    Must run BEFORE build: it bakes the vision/describe event type into
+rem    KNOWN_SESSION_EVENT_TYPES. Skipping it makes the harness refuse to
+rem    reopen any session that used the vision-fallback feature
+rem    (SessionFormatUnsupportedError).
+call pnpm run gen-persistence-catalog
+if errorlevel 1 (
+    echo.
+    echo   gen-persistence-catalog failed. See errors above.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [4/4] Building harness (slow) ...
 call pnpm run build
 if errorlevel 1 (
     echo.
