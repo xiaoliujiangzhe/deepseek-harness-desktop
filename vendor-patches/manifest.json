@@ -1,0 +1,19 @@
+{
+  "repo": "deepseek-ai/deepseek-harness",
+  "baseVersion": "0.1.0-rc.5",
+  "entries": [
+    { "src": "llm-vision-fallback", "dst": "packages/llm/llm-vision-fallback", "kind": "dir" },
+    { "src": "ui-settings-models/VisionModelPicker.tsx", "dst": "packages/client/ui-settings-models/src/client/VisionModelPicker.tsx", "kind": "new" },
+    { "src": "agent.ts", "dst": "packages/core/agent-loop/src/agent.ts", "kind": "overwrite" },
+    { "src": "base-cordis.patch.yml", "dst": "packages/bundle/base/cordis.patch.yml", "kind": "overwrite" },
+    { "src": "base-package.json", "dst": "packages/bundle/base/package.json", "kind": "overwrite" },
+    { "src": "host-tsconfig.json", "dst": "tsconfig.host.json", "kind": "overwrite" },
+    { "src": "ui-settings-models/ModelsSection.tsx", "dst": "packages/client/ui-settings-models/src/client/ModelsSection.tsx", "kind": "overwrite" },
+    { "src": "ui-settings-models/ModelListEditor.tsx", "dst": "packages/client/ui-settings-models/src/client/ModelListEditor.tsx", "kind": "overwrite" },
+    { "src": "ui-settings-models/locales.ts", "dst": "packages/client/ui-settings-models/src/client/locales.ts", "kind": "overwrite" },
+    { "src": "ui-settings-models/ModelsSection.module.css", "dst": "packages/client/ui-settings-models/src/client/ModelsSection.module.css", "kind": "overwrite" },
+    { "src": "apiproxy/api-proxy.ts", "dst": "packages/host/apiproxy/src/api-proxy.ts", "kind": "overwrite" },
+    { "src": "apiproxy/api/sessions.ts", "dst": "packages/host/apiproxy/src/api/sessions.ts", "kind": "overwrite" },
+    { "src": "apiproxy/api/sessions.schema.ts", "dst": "packages/host/apiproxy/src/api/sessions.schema.ts", "kind": "overwrite" }
+  ]
+}

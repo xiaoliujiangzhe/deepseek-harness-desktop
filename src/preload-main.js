@@ -226,6 +226,7 @@ const CONTROLS_CSS = `
 .dshd-btn:hover { background: rgba(255,255,255,0.14); }
 .dshd-textarea { width: 100%; min-height: 80px; resize: vertical; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; color: inherit; padding: 8px; font: 11.5px/1.5 Consolas, monospace; }
 .dshd-hint { font-size: 11px; opacity: 0.5; }
+.dshd-update-log { width: 100%; box-sizing: border-box; max-height: 180px; overflow: auto; margin: 8px 0 0; padding: 8px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; font: 11px/1.5 Consolas, monospace; white-space: pre-wrap; word-break: break-all; color: inherit; }
 `;
 
 const WALLPAPER_CSS = `
@@ -406,17 +407,129 @@ function buildRow() {
   return row;
 }
 
+// ---------- update row ----------
+
+const UPDATE_ROW_ID = 'dsh-desktop-update-row';
+const UPDATE_LOG_ID = 'dsh-desktop-update-log';
+
+function buildUpdateRow() {
+  const row = el('div', '');
+  row.id = UPDATE_ROW_ID;
+  row.setAttribute('data-slot', 'settings.general.item');
+  row.appendChild(el('div', 'dshd-title', 'Harness 更新'));
+
+  const status = el('div', 'dshd-hint', '正在读取当前版本…');
+  const checkBtn = el('button', 'dshd-btn', '检查更新');
+  const updateBtn = el('button', 'dshd-btn', '更新');
+  updateBtn.style.display = 'none';
+  const btns = el('div', 'dshd-row');
+  btns.appendChild(checkBtn);
+  btns.appendChild(updateBtn);
+
+  const log = el('pre', 'dshd-update-log');
+  log.id = UPDATE_LOG_ID;
+  log.style.display = 'none';
+
+  let current = null;
+  let latest = null;
+  let updating = false;
+
+  const renderStatus = () => {
+    if (current === null && latest === null) return;
+    const cur = current === null ? '未构建（npm 版）' : current;
+    if (updating) { status.textContent = '正在更新，请稍候（几分钟）…'; return; }
+    if (latest !== null && current !== latest) {
+      status.textContent = `当前 ${cur} → 最新 ${latest}`;
+      updateBtn.style.display = '';
+    } else if (latest !== null) {
+      status.textContent = `已是最新（${cur}）`;
+      updateBtn.style.display = 'none';
+    } else {
+      status.textContent = `当前 ${cur}`;
+    }
+  };
+
+  const appendLog = (text) => {
+    log.style.display = '';
+    log.textContent += text;
+    log.scrollTop = log.scrollHeight;
+  };
+
+  const doCheck = async () => {
+    checkBtn.disabled = true;
+    status.textContent = '正在检查官方最新版本…';
+    const r = await ipcRenderer.invoke('update:check');
+    checkBtn.disabled = false;
+    if (!r || !r.ok) {
+      status.textContent = '检查失败：' + ((r && r.message) || '未知错误');
+      return;
+    }
+    current = r.current;
+    latest = r.latest;
+    renderStatus();
+  };
+
+  const doUpdate = async () => {
+    if (updating) return;
+    updating = true;
+    checkBtn.disabled = true;
+    updateBtn.disabled = true;
+    log.textContent = '';
+    renderStatus();
+    const r = await ipcRenderer.invoke('update:run');
+    updating = false;
+    checkBtn.disabled = false;
+    updateBtn.disabled = false;
+    if (!r || !r.ok) {
+      status.textContent = '更新失败：' + ((r && r.message) || '未知错误');
+      appendLog('\n[失败] ' + ((r && r.message) || '未知错误') + '\n');
+      return;
+    }
+    current = r.version;
+    latest = r.version;
+    renderStatus();
+    appendLog('\n更新完成，请从托盘退出并重启应用后生效。\n');
+    if (r.overwritten && r.overwritten.length) {
+      appendLog('\n[需人工核对] 以下文件被补丁覆盖，若官方新版也改过它们，可能丢失官方改动：\n'
+        + r.overwritten.map((p) => '  - ' + p).join('\n') + '\n');
+    }
+  };
+
+  checkBtn.addEventListener('click', doCheck);
+  updateBtn.addEventListener('click', doUpdate);
+
+  row.appendChild(status);
+  row.appendChild(btns);
+  row.appendChild(log);
+
+  // Prime the status line once, quietly.
+  ipcRenderer.invoke('update:check').then((r) => {
+    if (r && r.ok) {
+      current = r.current;
+      latest = r.latest;
+      renderStatus();
+    }
+  }).catch(() => { /* leave the placeholder text */ });
+
+  return row;
+}
+
 // ---------- injection ----------
+
+function injectRow(rowId, builder) {
+  if (document.getElementById(rowId)) return;
+  const anchors = document.querySelectorAll('[data-slot="settings.general.item"]');
+  if (anchors.length === 0) return;
+  const anchor = anchors[anchors.length - 1];
+  const section = anchor.parentElement;
+  if (!section) return;
+  section.appendChild(builder());
+}
 
 function tryInject() {
   try {
-    if (document.getElementById(ROW_ID)) return;
-    const anchors = document.querySelectorAll('[data-slot="settings.general.item"]');
-    if (anchors.length === 0) return;
-    const anchor = anchors[anchors.length - 1];
-    const section = anchor.parentElement;
-    if (!section) return;
-    section.appendChild(buildRow());
+    injectRow(ROW_ID, buildRow);
+    injectRow(UPDATE_ROW_ID, buildUpdateRow);
   } catch {
     /* ignore transient DOM races */
   }
@@ -444,6 +557,14 @@ ipcRenderer.invoke('appearance:get').then((a) => {
 ipcRenderer.on('appearance:update', (_e, a) => {
   state = { ...DEFAULTS, ...(a || {}) };
   applyTheme(state);
+});
+ipcRenderer.on('update:progress', (_e, text) => {
+  const log = document.getElementById(UPDATE_LOG_ID);
+  if (log) {
+    log.style.display = '';
+    log.textContent += text;
+    log.scrollTop = log.scrollHeight;
+  }
 });
 
 if (document.readyState === 'loading') {

@@ -5,6 +5,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { startService } = require('./server');
+const { checkLatest, applyUpdate, currentVersion } = require('./update');
 
 const APP_NAME = 'DeepSeek Harness';
 const LOADING_WINDOW_SIZE = { width: 480, height: 340 };
@@ -317,6 +318,29 @@ ipcMain.handle('appearance:save', (_event, appearance) => {
     mainWindow.webContents.send('appearance:update', settings.appearance);
   }
   return settings.appearance;
+});
+
+// --- IPC for the harness updater ---
+ipcMain.handle('update:check', async () => {
+  try {
+    return { ok: true, ...(await checkLatest()) };
+  } catch (error) {
+    return { ok: false, message: error && error.message ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('update:run', async () => {
+  const send = (text) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update:progress', text);
+    }
+  };
+  try {
+    const result = await applyUpdate(send);
+    return { ok: true, ...result };
+  } catch (error) {
+    return { ok: false, message: error && error.message ? error.message : String(error) };
+  }
 });
 
 // --- App lifecycle ---

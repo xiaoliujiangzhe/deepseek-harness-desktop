@@ -24,6 +24,7 @@ DeepSeek Harness 的桌面版外壳。它封装了 Harness 的 `dsh web` CLI：*
 - **系统托盘**：关窗不退出，缩到托盘、服务常驻；单击托盘图标切换显示/隐藏，右键菜单可「显示 / 打开工作目录 / 退出」。单实例：重复双击快捷方式只唤起已有窗口。
 - **主界面皮肤（外观自定义）**：集成进 Harness 网页自己的「设置 → 通用设置」里，新增一个「桌面外观」区块，可**上传图片当背景**、调背景模糊/变暗、改字体字号、布局密度、强调色，并支持**自定义 CSS**，保存后实时生效。深浅色模式在 Harness 设置里切换。
 - **识图模型兜底（源码定制）**：主模型是纯文本（如 DeepSeek-V4）时，发图片会自动先用一个「识图模型」把图片描述成文字，再把描述交给主模型。对应源码改动归档在 `vendor-patches/`，需先跑 `setup-harness.cmd` 构建进 vendored 源码（见下文「识图模型兜底」）。
+- **一键更新（Harness 更新）**：「设置 → 通用设置」里还有一个「Harness 更新」区块，点「检查更新」比对官方仓库最新版本，点「更新」自动下载官方新源码、重放 `vendor-patches/` 补丁并重建。改过的核心文件会列出来提示人工核对（官方若同时改了这些文件，需手动合并），详见下文「Harness 更新」。
 
 ## 目录结构
 
@@ -110,6 +111,16 @@ npm run dist:win   # electron-builder → release/ 下的 NSIS 安装包
 > 前提：所选的识图模型本身必须真的支持图片输入（例如走兼容 OpenAI 的多模态模型）；否则识图调用会在 provider 侧报错。
 
 底层改动（识图兜底插件、agent-loop 重写挂钩、apiproxy 入口放行与暴露白名单等）归档在 `vendor-patches/`，由 `setup-harness.cmd` 构建进 vendored 源码。未跑 `setup-harness.cmd` 或删除 `vendor/` 时，桌面版回退到 npm `@deepseek-ai/dsh`，此时没有识图兜底。
+
+## Harness 更新
+
+官方仓库（`deepseek-ai/deepseek-harness`）以 `master` 分支为最新，不发布 GitHub Release。桌面版在「设置 → 通用设置」里提供「Harness 更新」区块：
+
+- **检查更新**：比对 vendored 源码版本与官方 `master` 分支的 `package.json` 版本。
+- **更新**：自动下载官方 `master` 源码 → 按 `vendor-patches/manifest.json` 重放补丁 → 重建（`pnpm install` + `gen-persistence-catalog` + `build`）→ 完成后提示重启。
+- **人工核对**：更新完成后会列出「被补丁覆盖的核心文件」。这些文件官方若在同一版本里也改过，覆盖会丢失官方改动，需要人工合并后再重建。
+
+> 一键更新是「下载 + 重放 + 重建」的自动化，但**不能自动合并冲突**：凡是动了核心文件的定制，升级时都得过一遍人工判断。追新频率建议按需，不必官方每次提交都升。
 
 ## 参考
 
