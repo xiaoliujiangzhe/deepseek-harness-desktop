@@ -410,7 +410,6 @@ function buildRow() {
 // ---------- update row ----------
 
 const UPDATE_ROW_ID = 'dsh-desktop-update-row';
-const UPDATE_LOG_ID = 'dsh-desktop-update-log';
 
 function buildUpdateRow() {
   const row = el('div', '');
@@ -420,39 +419,23 @@ function buildUpdateRow() {
 
   const status = el('div', 'dshd-hint', '正在读取当前版本…');
   const checkBtn = el('button', 'dshd-btn', '检查更新');
-  const updateBtn = el('button', 'dshd-btn', '更新');
-  updateBtn.style.display = 'none';
-  const btns = el('div', 'dshd-row');
-  btns.appendChild(checkBtn);
-  btns.appendChild(updateBtn);
-
-  const log = el('pre', 'dshd-update-log');
-  log.id = UPDATE_LOG_ID;
-  log.style.display = 'none';
+  const hint = el('div', 'dshd-hint', '');
 
   let current = null;
   let latest = null;
-  let updating = false;
 
   const renderStatus = () => {
-    if (current === null && latest === null) return;
     const cur = current === null ? '未构建（npm 版）' : current;
-    if (updating) { status.textContent = '正在更新，请稍候（几分钟）…'; return; }
-    if (latest !== null && current !== latest) {
-      status.textContent = `当前 ${cur} → 最新 ${latest}`;
-      updateBtn.style.display = '';
-    } else if (latest !== null) {
-      status.textContent = `已是最新（${cur}）`;
-      updateBtn.style.display = 'none';
-    } else {
+    if (latest === null) {
       status.textContent = `当前 ${cur}`;
+      hint.textContent = '';
+    } else if (current !== latest) {
+      status.textContent = `当前 ${cur} → 官方最新 ${latest}`;
+      hint.textContent = '官方已出新版。本项目是 fork + 补丁，升级需重打补丁后运行 setup-harness.cmd（或联系维护者），不会在应用内自动升级。';
+    } else {
+      status.textContent = `已是最新（${cur}）`;
+      hint.textContent = '';
     }
-  };
-
-  const appendLog = (text) => {
-    log.style.display = '';
-    log.textContent += text;
-    log.scrollTop = log.scrollHeight;
   };
 
   const doCheck = async () => {
@@ -462,6 +445,7 @@ function buildUpdateRow() {
     checkBtn.disabled = false;
     if (!r || !r.ok) {
       status.textContent = '检查失败：' + ((r && r.message) || '未知错误');
+      hint.textContent = '';
       return;
     }
     current = r.current;
@@ -469,38 +453,11 @@ function buildUpdateRow() {
     renderStatus();
   };
 
-  const doUpdate = async () => {
-    if (updating) return;
-    updating = true;
-    checkBtn.disabled = true;
-    updateBtn.disabled = true;
-    log.textContent = '';
-    renderStatus();
-    const r = await ipcRenderer.invoke('update:run');
-    updating = false;
-    checkBtn.disabled = false;
-    updateBtn.disabled = false;
-    if (!r || !r.ok) {
-      status.textContent = '更新失败：' + ((r && r.message) || '未知错误');
-      appendLog('\n[失败] ' + ((r && r.message) || '未知错误') + '\n');
-      return;
-    }
-    current = r.version;
-    latest = r.version;
-    renderStatus();
-    appendLog('\n更新完成，请从托盘退出并重启应用后生效。\n');
-    if (r.overwritten && r.overwritten.length) {
-      appendLog('\n[需人工核对] 以下文件被补丁覆盖，若官方新版也改过它们，可能丢失官方改动：\n'
-        + r.overwritten.map((p) => '  - ' + p).join('\n') + '\n');
-    }
-  };
-
   checkBtn.addEventListener('click', doCheck);
-  updateBtn.addEventListener('click', doUpdate);
 
   row.appendChild(status);
-  row.appendChild(btns);
-  row.appendChild(log);
+  row.appendChild(checkBtn);
+  row.appendChild(hint);
 
   // Prime the status line once, quietly.
   ipcRenderer.invoke('update:check').then((r) => {
@@ -557,14 +514,6 @@ ipcRenderer.invoke('appearance:get').then((a) => {
 ipcRenderer.on('appearance:update', (_e, a) => {
   state = { ...DEFAULTS, ...(a || {}) };
   applyTheme(state);
-});
-ipcRenderer.on('update:progress', (_e, text) => {
-  const log = document.getElementById(UPDATE_LOG_ID);
-  if (log) {
-    log.style.display = '';
-    log.textContent += text;
-    log.scrollTop = log.scrollHeight;
-  }
 });
 
 if (document.readyState === 'loading') {

@@ -5,7 +5,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { startService } = require('./server');
-const { checkLatest, applyUpdate, currentVersion } = require('./update');
+const { checkLatest } = require('./update');
 
 const APP_NAME = 'DeepSeek Harness';
 const LOADING_WINDOW_SIZE = { width: 480, height: 340 };
@@ -320,46 +320,12 @@ ipcMain.handle('appearance:save', (_event, appearance) => {
   return settings.appearance;
 });
 
-// --- IPC for the harness updater ---
+// --- IPC for the harness version check ---
 ipcMain.handle('update:check', async () => {
   try {
     return { ok: true, ...(await checkLatest()) };
   } catch (error) {
     return { ok: false, message: error && error.message ? error.message : String(error) };
-  }
-});
-
-ipcMain.handle('update:run', async () => {
-  const send = (text) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update:progress', text);
-    }
-  };
-
-  // Stop the running service first: on Windows the dsh process keeps the
-  // vendored tree's files open, so swapping it in-place fails with EBUSY.
-  if (service) {
-    send('正在停止本地服务…\n');
-    try {
-      await service.stop();
-    } catch {
-      /* the tree-kill may have already reported the process gone */
-    }
-    service = null;
-  }
-
-  try {
-    const result = await applyUpdate(send);
-    send('更新完成，正在重启应用…\n');
-    setTimeout(() => { app.relaunch(); app.exit(0); }, 800);
-    return { ok: true, ...result };
-  } catch (error) {
-    const message = error && error.message ? error.message : String(error);
-    // applyUpdate restored the previous tree; surface the failure and restart
-    // cleanly so the old service comes back.
-    dialog.showErrorBox('更新失败', message);
-    setTimeout(() => { app.relaunch(); app.exit(0); }, 150);
-    return { ok: false, message };
   }
 });
 
