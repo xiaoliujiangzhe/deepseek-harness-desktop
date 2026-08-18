@@ -141,6 +141,24 @@ function findExtractedRoot(extractDir) {
   return path.join(extractDir, entries[0].name);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Rename with a short retry: on Windows the OS may briefly hold a directory
+ *  lock right after the service tree is killed. */
+async function renameRetry(from, to, attempts = 6) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (error) {
+      if (i === attempts - 1) throw error;
+      await sleep(500 * (i + 1));
+    }
+  }
+}
+
 /**
  * Download the latest upstream source, re-apply the vendor patches, swap it
  * into `vendor/deepseek-harness`, and rebuild. Returns the new version and the
@@ -173,9 +191,9 @@ async function applyUpdate(emit) {
   // Swap: keep the old tree as a backup until the build succeeds.
   const backup = `${VENDOR_DIR}.bak-${Date.now()}`;
   const hadOld = fs.existsSync(VENDOR_DIR);
-  if (hadOld) fs.renameSync(VENDOR_DIR, backup);
+  if (hadOld) await renameRetry(VENDOR_DIR, backup);
   fs.mkdirSync(path.dirname(VENDOR_DIR), { recursive: true });
-  fs.renameSync(root, VENDOR_DIR);
+  await renameRetry(root, VENDOR_DIR);
 
   emit && emit('安装依赖 + 重建（需要几分钟）…\n');
   try {

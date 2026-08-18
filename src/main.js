@@ -335,11 +335,31 @@ ipcMain.handle('update:run', async () => {
       mainWindow.webContents.send('update:progress', text);
     }
   };
+
+  // Stop the running service first: on Windows the dsh process keeps the
+  // vendored tree's files open, so swapping it in-place fails with EBUSY.
+  if (service) {
+    send('正在停止本地服务…\n');
+    try {
+      await service.stop();
+    } catch {
+      /* the tree-kill may have already reported the process gone */
+    }
+    service = null;
+  }
+
   try {
     const result = await applyUpdate(send);
+    send('更新完成，正在重启应用…\n');
+    setTimeout(() => { app.relaunch(); app.exit(0); }, 800);
     return { ok: true, ...result };
   } catch (error) {
-    return { ok: false, message: error && error.message ? error.message : String(error) };
+    const message = error && error.message ? error.message : String(error);
+    // applyUpdate restored the previous tree; surface the failure and restart
+    // cleanly so the old service comes back.
+    dialog.showErrorBox('更新失败', message);
+    setTimeout(() => { app.relaunch(); app.exit(0); }, 150);
+    return { ok: false, message };
   }
 });
 
