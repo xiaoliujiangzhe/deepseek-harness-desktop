@@ -4,6 +4,21 @@
 
 格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/)，按「新增 / 变更 / 修复 / 文档」分组。
 
+## [0.2.1] — 2026-08-23
+
+### 修复
+
+- 修复 electron-builder 没有将 Harness 自动安装的 peer dependencies 带入安装包，导致安装版以 `ERR_MODULE_NOT_FOUND` 退出的问题。
+- 将当前 Harness 运行时需要的 peer packages 明确列为桌面应用生产依赖，避免被 electron-builder 依赖裁剪。
+
+### 新增
+
+- 新增构建后验收：`npm run dist:win` 完成后直接运行 `release/win-unpacked` 内的 DSH CLI；若缺包或 Harness 版本不一致，构建流程失败，禁止发布。
+
+### 发布说明
+
+- `v0.2.0` 的源码开发模式可运行，但已发布的 Windows 安装包缺少运行时依赖，不应继续分发。
+
 ## [0.2.0] — 2026-08-23
 
 ### 新增
