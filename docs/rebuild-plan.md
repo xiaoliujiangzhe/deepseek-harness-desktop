@@ -64,6 +64,7 @@ pnpm run build          # 或 pnpm run build:lib:client（只编客户端 lib）
 | 新包 | `packages/llm/llm-vision-fallback/` | cordis Service，`inject = ['llm']`，提供 `ctx.visionFallback` |
 | 设置页 | `packages/client/ui-settings-models/src/client/VisionModelPicker.tsx` | 「设置→模型→识图模型」选择器，写进 `vision-fallback` settings 命名空间 |
 | agent loop | `packages/agent/agent-loop/`（请求装配处） | 必须加：模型 `inputModalities` 不含 `image` 时调 `ctx.visionFallback.rewriteMessages(...)` |
+| apiproxy 准入 | `packages/host/apiproxy/src/api-proxy.ts` | `session.prompt` 与 `session.selectModel` 在目标模型纯文本且会话有图时，若识图兜底已配置（`ctx.get('visionFallback').configured()`）则放行，否则拒绝 |
 
 `llm-vision-fallback` 核心逻辑（已抓到完整源码）：
 
@@ -76,6 +77,14 @@ pnpm run build          # 或 pnpm run build:lib:client（只编客户端 lib）
 - 替换文本格式：`【图片[「名称」]——此处有一张你无法直接查看的图片；以下是识图模型生成的描述】\n<描述>\n【图片描述结束】`。
 - 配置项：`maxOutputTokens`、`timeoutMs`（超时码 `VISION_DESCRIBE_TIMEOUT`）。
 - 描述会作为 `vision/describe` 事件写进会话日志，重放时复用、不重复调用识图模型。
+
+## DeepSeek 官方路由支持图片
+
+`llm-deepseek` 适配器原先整条路由是纯文本（`modelInfo` 硬编码 `inputModalities: ['text']`，序列化器
+`assertTextOnly` 见图即抛 `UNSUPPORTED_CONTENT`），所以 `deepseek-v4-flash-vision-exp` 加了目录也收不了图。
+已改为支持图片：目录字段加 `inputModalities`、`modelInfo` 按声明返回、序列化器把图片块转成 OpenAI
+`image_url`（经 `ctx.attachments.readImage` 读字节再造 data URI）。生效需在 `$DSH_HOME/settings.yaml` 的
+`llm-deepseek.models` 里给该模型加 `inputModalities: [text, image]`。
 
 ## 接入现有 Electron 壳
 

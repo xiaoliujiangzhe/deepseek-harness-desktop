@@ -2299,11 +2299,18 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             if (pendingImage || messagesHaveImage(found.agent.session.deriveMessages())) {
               const info = await ctx.llm.resolveModelInfo(resolved.provider, resolved.model)
               if (info.inputModalities !== undefined && !info.inputModalities.includes('image')) {
-                return err(request, {
-                  code: 'model-unavailable',
-                  message: `Model "${resolved.model}" does not accept image input, but this session already contains images; select an image-capable model.`,
-                  details: { provider, model },
-                })
+                // A designated vision model rewrites the session's images at request
+                // assembly (agent-loop vision-fallback), so a text-only route is
+                // admitted while the fallback is configured — the same admission the
+                // prompt handler applies.
+                const visionFallback = ctx.get('visionFallback') as { configured?: () => boolean } | undefined
+                if (visionFallback?.configured?.() !== true) {
+                  return err(request, {
+                    code: 'model-unavailable',
+                    message: `Model "${resolved.model}" does not accept image input, but this session already contains images; select an image-capable model.`,
+                    details: { provider, model },
+                  })
+                }
               }
             }
             const selected: ModelSelection = {

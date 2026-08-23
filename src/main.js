@@ -4,8 +4,9 @@ const { app, BrowserWindow, ipcMain, shell, dialog, Tray, Menu, nativeImage } = 
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
-const { startService } = require('./server');
+const { startService, resolveDshVersion } = require('./server');
 const { checkLatest } = require('./update');
+const { migrateHarnessHome } = require('./harness-migration');
 
 const APP_NAME = 'DeepSeek Harness';
 const LOADING_WINDOW_SIZE = { width: 480, height: 340 };
@@ -239,6 +240,28 @@ function launchService() {
   currentWorkspace = workspace;
 
   sendToLoading('startup:progress', { pct: 3, label: '正在解析运行环境…' });
+
+  const harnessVersion = resolveDshVersion();
+  if (harnessVersion) {
+    try {
+      const migration = migrateHarnessHome({
+        home: process.env.DSH_HOME || path.join(os.homedir(), '.dsh'),
+        targetVersion: harnessVersion
+      });
+      if (migration.migrated) {
+        sendToLoading('startup:progress', {
+          pct: 6,
+          label: `已备份旧版 Harness 运行目录，正在升级到 ${harnessVersion}…`
+        });
+      }
+    } catch (error) {
+      showStartupError({
+        message: 'Harness 升级迁移失败',
+        detail: `${error.message}\n\n请先退出所有 dsh / DeepSeek Harness 进程后重试。`
+      });
+      return;
+    }
+  }
 
   service = startService({
     port,

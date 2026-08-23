@@ -1,18 +1,24 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DeepSeek Harness desktop shell — auto-starts the local dsh web service and opens the browser UI in a native window.",
   "author": "DSH Desktop",
   "license": "MIT",
   "main": "src/main.js",
   "scripts": {
+    "verify:harness": "node scripts/verify-harness-version.js",
+    "prestart": "npm run verify:harness",
     "start": "electron .",
+    "prestart:debug": "npm run verify:harness",
     "start:debug": "electron . --enable-logging",
+    "test": "node --test test/*.test.js",
+    "predist": "npm run verify:harness",
     "dist": "electron-builder",
+    "predist:win": "npm run verify:harness",
     "dist:win": "electron-builder --win"
   },
   "dependencies": {
-    "@deepseek-ai/dsh": "0.1.0-rc.6"
+    "@deepseek-ai/dsh": "0.1.1-rc.2"
   },
   "devDependencies": {
     "electron": "^35.0.0",
@@ -22,6 +28,7 @@
     "appId": "com.dsh.desktop",
     "productName": "DeepSeek Harness",
     "asar": true,
+    "npmRebuild": false,
     "asarUnpack": [
       "node_modules/**/*"
     ],

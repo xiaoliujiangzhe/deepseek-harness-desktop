@@ -61,10 +61,15 @@ function resolveDshBin() {
   // Explicit override (debugging / custom layouts).
   if (process.env.DSH_DESKTOP_BIN) candidates.push(process.env.DSH_DESKTOP_BIN);
 
-  // 正路：优先使用 vendored 源码构建出的 CLI（含识图兜底等改动）。构建后
-  // `vendor/deepseek-harness/apps/cli/lib/bin.js` 才存在；否则回退到 npm 包。
-  const vendoredBin = path.join(__dirname, '..', 'vendor', 'deepseek-harness', 'apps', 'cli', 'lib', 'bin.js');
-  if (fs.existsSync(vendoredBin)) candidates.push(vendoredBin);
+  // Packaged (electron-builder): production node_modules is unpacked to the
+  // real filesystem so the separate Node process can read it. Keep this ahead
+  // of development resolution so a release always runs the version it ships.
+  if (process.resourcesPath) {
+    candidates.push(
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
+      path.join(process.resourcesPath, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+    );
+  }
 
   // Development / unpackaged: resolve through this app's node_modules.
   try {
@@ -78,17 +83,37 @@ function resolveDshBin() {
     }
   }
 
-  // Packaged (electron-builder): production node_modules is unpacked to the
-  // real filesystem so the separate Node process can read it.
-  if (process.resourcesPath) {
-    candidates.push(
-      path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
-      path.join(process.resourcesPath, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
-    );
+  // Vendored Harness is now an opt-in maintainer/debug path. The official
+  // npm package contains native DeepSeek vision support, while vendor/ is not
+  // part of the Electron release payload. Silently preferring it made source
+  // runs and GitHub installers execute different Harness versions.
+  if (process.env.DSH_DESKTOP_USE_VENDOR === '1') {
+    candidates.push(path.join(
+      __dirname, '..', 'vendor', 'deepseek-harness', 'apps', 'cli', 'lib', 'bin.js'
+    ));
   }
 
   for (const candidate of candidates) {
     if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Resolve the version belonging to the selected CLI entry. */
+function resolveDshVersion(bin = resolveDshBin()) {
+  if (!bin) return null;
+  let dir = path.dirname(bin);
+  for (let depth = 0; depth < 6; depth += 1) {
+    const manifest = path.join(dir, 'package.json');
+    try {
+      const pkg = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+      if (pkg && pkg.name === '@deepseek-ai/dsh' && typeof pkg.version === 'string') return pkg.version;
+    } catch {
+      /* walk upward */
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
   return null;
 }
@@ -111,6 +136,13 @@ function probeUrl(url, timeoutMs) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Build CLI arguments for the web service hosted inside the desktop shell. */
+function buildDshArgs(bin, port) {
+  const args = [bin, 'web', '--no-open'];
+  if (port) args.push('--port', String(port));
+  return args;
 }
 
 /**
@@ -144,7 +176,7 @@ function startService(options) {
   }
 
   let cmd;
-  let args = [bin, 'web'];
+  const args = buildDshArgs(bin, options.port);
   const env = { ...process.env, ...(options.env || {}) };
   if (node) {
     cmd = node;
@@ -154,8 +186,6 @@ function startService(options) {
     cmd = process.execPath;
     env.ELECTRON_RUN_AS_NODE = '1';
   }
-  if (options.port) args.push('--port', String(options.port));
-
   progress({ pct: 8, label: node ? '已定位 Node 运行时' : '使用 Electron 内置运行时（提示：终端类工具可能受限）' });
 
   const child = spawn(cmd, args, {
@@ -276,4 +306,4 @@ function startService(options) {
   return { stop, child, get url() { return url; }, get ready() { return ready; } };
 }
 
-module.exports = { startService, resolveNodeExecutable, resolveDshBin, READY_LINE };
+module.exports = { startService, resolveNodeExecutable, resolveDshBin, resolveDshVersion, buildDshArgs, READY_LINE };

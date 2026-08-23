@@ -425,13 +425,13 @@ function buildUpdateRow() {
   let latest = null;
 
   const renderStatus = () => {
-    const cur = current === null ? '未构建（npm 版）' : current;
+    const cur = current === null ? '未检测到' : current;
     if (latest === null) {
       status.textContent = `当前 ${cur}`;
       hint.textContent = '';
     } else if (current !== latest) {
       status.textContent = `当前 ${cur} → 官方最新 ${latest}`;
-      hint.textContent = '官方已出新版。本项目是 fork + 补丁，升级需重打补丁后运行 setup-harness.cmd（或联系维护者），不会在应用内自动升级。';
+      hint.textContent = '官方已出新版。请安装维护者发布的新桌面版；应用不会在本机临时下载或重建 Harness。';
     } else {
       status.textContent = `已是最新（${cur}）`;
       hint.textContent = '';

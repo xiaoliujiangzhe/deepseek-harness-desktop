@@ -1,36 +1,23 @@
 # Changelog
 
-本文件记录 DeepSeek Harness Desktop 的改动。版本号沿用 `package.json` 的 `version`（当前 `0.1.0`），尚未打正式 tag/Release。
+本文件记录 DeepSeek Harness Desktop 的改动。版本号沿用 `package.json` 的 `version`。
 
 格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/)，按「新增 / 变更 / 修复 / 文档」分组。
 
-## [Unreleased]
+## [0.2.0] — 2026-08-23
 
 ### 新增
 
-- **识图模型兜底（走正路 · vendored 源码定制）**：主模型是纯文本（如 DeepSeek-V4）时，发图片会先用一个「识图模型」把图片描述成文字，再把描述交给主模型。涉及识图兜底插件、agent-loop 重写挂钩、base bundle 挂载、apiproxy 入口放行与暴露白名单。
-- **设置界面「识图模型」下拉框**：在「设置 → 模型」直接选择识图模型，无需手改 `settings.yaml`。
-- **模型编辑「图片输入」开关 + 识图下拉框只列支持图片的模型**：`llm.models` 接口随模型返回 `inputModalities`；给模型勾「图片输入」后它才会出现在识图下拉框里。
-- **Electron 壳优先使用 vendored 构建的 CLI**：`vendor/deepseek-harness/apps/cli/lib/bin.js` 存在时用它（含识图兜底等定制），否则回退 npm `@deepseek-ai/dsh`。
+- Harness 固定升级到 `0.1.1-rc.2`，使用官方原生 `deepseek-v4-flash-vision-exp` 多模态链路。
+- 新增 rc.6 到 rc.2 的可恢复迁移：只改名备份生成型插件目录，不动会话、附件、设置、凭据和用户 Cordis 补丁。
+- 新增 Node.js 单元测试，覆盖版本比较、迁移与用户数据保留。
 
 ### 变更
 
-- **「Harness 更新」从「一键更新」改为「检查 + 提醒」**：设置里的区块只检查官方 `master` 分支版本并提示「官方最新 vX（当前 vY）」，不再在应用内自动下载/重放补丁/重建。升级改为重打补丁后手动跑 `setup-harness.cmd`（维护者任务），避免在用户机器上因补丁冲突或目录占用而失败。
-
-### 修复
-
-- 修复 `vision/describe` 事件未进 `known-event-types` 导致重启后重开会话报 `SessionFormatUnsupportedError`（构建前补 `gen-persistence-catalog`）。
-- 修复识图下拉框在模型能力变更后不刷新（把 namespace 视图纳入 effect 依赖）。
-- 修复发图入口在纯文本主模型时被直接拒绝、走不到识图兜底（配置了识图兜底时放行）。
-- 修复 apiproxy 设置暴露白名单漏掉 `vision-fallback`，导致下拉框永远不显示。
-- 修复 `vision-fallback` 的 `purpose: 'vision-describe'` 类型不兼容（当前 master 的 purpose 联合类型更窄）。
-- 修复 `llm-vision-fallback` 未注册进 `tsconfig.host.json` references（tsc 不编译 / tsdown 报 UNRESOLVED_ENTRY）。
-- 修复 `llm-vision-fallback` 缺 `maxOutputTokens`/`timeoutMs` 必填配置导致 boot 失败。
-
-### 文档
-
-- README 更新：vendored 源码构建方式、识图模型兜底使用说明、Harness 更新说明。
-- 新增 `vendor-patches/`（对 vendored 源码的改动存档）与 `vendor-patches/manifest.json`（补丁清单）。
+- 发布版和开发版默认都使用根目录锁定的官方 npm Harness；vendored CLI 仅在 `DSH_DESKTOP_USE_VENDOR=1` 时用于维护调试。
+- 「Harness 更新」显示实际选中的 CLI 版本，不再用未打包的 vendor 版本误报当前版本。
+- 历史识图兜底补丁退役，不再进入桌面版运行链路。
+- 禁用 electron-builder 的原生模块重建；DSH 的 `node-pty` 等模块由系统 Node 运行，不加载进 Electron ABI。
 
 ## [0.1.0] — 初始版本
 

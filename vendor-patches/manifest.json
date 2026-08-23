@@ -1,5 +1,8 @@
 {
   "repo": "deepseek-ai/deepseek-harness",
+  "status": "retired",
+  "reason": "These patches (image support, vision fallback, model-catalog inputModalities, admission gating) were superseded by upstream v0.1.1-rc.2 native multimodal support; the vendored harness is now built stock upstream.",
+  "retiredAt": "v0.1.1-rc.2",
   "baseVersion": "0.1.0-rc.5",
   "entries": [
     { "src": "llm-vision-fallback", "dst": "packages/llm/llm-vision-fallback", "kind": "dir" },

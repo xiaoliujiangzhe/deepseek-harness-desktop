@@ -1,5 +1,7 @@
 # vendor-patches —— 重编译正路的源码改动
 
+> **已升级退役**：`vendor/deepseek-harness` 已从 `0.1.0-rc.5` 升级到上游 **`v0.1.1-rc.2`**（2026-08-21）。上游原生支持多模态/图片（`llm-deepseek` 图片序列化、模型目录 `inputModalities`、图片准入、文件引用），因此本目录此前为"解决纯文本路由看图"打的补丁（识图兜底、图片支持、准入、识图模型 UI）**全部被上游官方取代，不再应用**。此目录仅存档历史改动；如需回滚到 rc.5，用 `vendor/deepseek-harness.old`。
+
 `vendor/deepseek-harness` 已 gitignore（不入库）。本目录保存我们对该源码做的改动，便于复现。
 
 ## 改了什么（识图模型兜底）
@@ -40,6 +42,26 @@
    - `ui-settings-models/locales.ts`、`ModelsSection.module.css` → 对应文案和样式。
    - 效果：在「模型」页给某个模型勾上「图片输入」，它才会出现在「识图模型」下拉框里，
      选中即用，无需手改 settings.yaml。
+
+8. **切换模型的准入检查尊重识图兜底（关键，否则带图会话切不回纯文本模型）**
+   - `apiproxy/api-proxy.ts` → `session.selectModel` 里，目标模型不含图片但会话已有图片时，
+     不再直接拒绝：若「识图模型」已配置（`ctx.get('visionFallback').configured()`），放行，
+     图片会在请求装配时被兜底改写（与 `session.prompt` 发图入口的放行逻辑一致）。
+   - 背景：`prompt`（发图入口）之前已放行，唯独 `selectModel`（切模型）没放行，
+     导致「带图会话 + 纯文本主模型（如 deepseek-v4-flash）」切模型时报
+     `model-unavailable: does not accept image input`。
+
+9. **DeepSeek 官方路由支持图片（让 deepseek-v4-flash-vision-exp 能直接收图）**
+   - `llm-deepseek/` 目录 → 整个拷到 `vendor/deepseek-harness/packages/llm/llm-deepseek/src/`
+   - 该适配器原先是"纯文本路由"：`modelInfo` 硬编码 `inputModalities: ['text']`，序列化器
+     `assertTextOnly` 见到图片直接抛 `UNSUPPORTED_CONTENT`。上面这个目录把它改成支持图片：
+     - `DeepSeekCatalogModel` + `Config.models` 目录加 `inputModalities` 字段；
+     - `modelInfo` 按声明返回（缺省仍 `['text']`）；
+     - 序列化器把图片块转成 OpenAI `image_url`（`data:<mediaType>;base64,<b64>`），user 与
+       tool-result 里的图片均可（`read_image` 结果也走通）；
+     - 适配器通过 `resolveImage` 回调（插件用 `ctx.attachments.readImage` 提供）读取图片字节。
+   - 生效方式：在 `$DSH_HOME/settings.yaml` 的 `llm-deepseek.models` 里给该模型加
+     `inputModalities: [text, image]`，主模型选它即可直接发图，无需识图兜底。
 
 ## 构建（必须在用户本机跑，沙箱禁 pnpm/子进程）
 
