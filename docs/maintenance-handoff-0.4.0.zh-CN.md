@@ -41,10 +41,20 @@ npm run verify:harness
 npm run dist:win
 ```
 
-- 自动化测试：27 项通过，新增多标签、主页迁移、恢复、选文、截图元数据和下载状态覆盖。
-- 2026-08-24 已使用隔离的 Electron userData 和 DSH_HOME 启动开发版，人工确认多标签网页、浏览器 chrome、面板布局和拖动宽度可用。
-- 隔离测试不修改用户真实 `~/.dsh`。
-- 此前的 `0.4.0` 安装包生成于新标签主页加入之前，已经失效；完成人工检查后必须重新执行 `npm run dist:win` 并记录新 SHA256。
+- 自动化测试：39 项通过，覆盖更新中心、诊断报告、插件管理、多标签主页迁移、恢复、选文、截图元数据和下载状态。
+- `npm run verify:harness` 通过：Harness `0.1.1-rc.2`。
+- 2026-08-24 已使用隔离的 Electron userData 和 DSH_HOME 启动开发版，人工确认多标签网页、浏览器 chrome、面板布局和拖动宽度可用；隔离测试不修改用户真实 `~/.dsh`。
+- 最终 `npm run dist:win` 已完成，打包校验通过：Harness `0.1.1-rc.2`、便携 Node.js `v24.18.0`、pnpm `11.21.0`。
+
+## 发布记录
+
+- Git 提交：`11513e6`（更新中心与诊断功能）和 `cd3bd23`（统一更新器安装包文件名）。
+- `main` 已推送到 `origin/main`；`v0.4.0` tag 指向 `cd3bd23`。
+- GitHub Release：<https://github.com/xiaoliujiangzhe/deepseek-harness-desktop/releases/tag/v0.4.0>
+- Release 为正式版（非 draft、非 prerelease），已上传 `DeepSeek-Harness-Setup-0.4.0.exe`、对应 `.blockmap` 和 `latest.yml`。
+- 安装包：149,108,215 bytes，SHA256：`A7AD1861A0A7E3020B55233A97DE3759405714043345AAC4D12AA89BA753F2BE`。
+- blockmap：154,841 bytes，SHA256：`F3A738C20E2997B78664B052A0660710BF5275332A8A29D9A3AB22A3CB93FF4E`。
+- `latest.yml` 的版本和文件名均为 `0.4.0` / `DeepSeek-Harness-Setup-0.4.0.exe`，与 Release 资产一致。
 
 ## 同轮启动修复
 
@@ -55,4 +65,4 @@ npm run dist:win
 
 - 版本号为 `0.4.0`，历史 `v0.3.0` / `v0.3.1` Release 和文档继续保留。
 - 不提交 `release/`、`node_modules/`、`runtime/node/node.exe`、用户 `.dsh`、`.env.image.local` 或任何 API Key。
-- 发布前记录最终安装包 SHA256，并在干净 Windows x64 环境覆盖安装验证。
+- 发布资产已上传；后续发布新版本时，必须重新生成 `latest.yml`、`.blockmap` 和安装包，并在干净 Windows x64 环境覆盖安装验证后再发布。
