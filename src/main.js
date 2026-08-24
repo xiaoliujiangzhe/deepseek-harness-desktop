@@ -4,12 +4,15 @@ const { app, BrowserWindow, WebContentsView, ipcMain, shell, dialog, Tray, Menu,
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
-const { startService, resolveDshVersion } = require('./server');
+const { startService, resolveDshBin, resolveDshVersion, resolveNodeExecutable } = require('./server');
 const { checkLatest } = require('./update');
+const { autoUpdater } = require('electron-updater');
+const { DesktopUpdateService, normalizeUpdatePreferences, readPortableNodeVersion } = require('./desktop-updater');
 const { migrateHarnessHome } = require('./harness-migration');
 const { EmbeddedBrowser, normalizeBrowserUrl } = require('./embedded-browser');
 const { LocalPreviewServer } = require('./local-preview-server');
-const { installMarketplacePlugin, listInstalled, runPluginCommand, searchMarketplace } = require('./plugin-manager');
+const { installMarketplacePlugin, listInstalled, resetMarketplaceCache, runPluginCommand, runtimePnpmPath, searchMarketplace, setPluginEnabled, updateInstalledPlugin } = require('./plugin-manager');
+const { backupConfiguration, buildDiagnosticReport, clearMarketplaceCache, redactSecrets, repairCredentialsVersion } = require('./diagnostics');
 
 const APP_NAME = 'DeepSeek Harness';
 const LOADING_WINDOW_SIZE = { width: 480, height: 340 };
@@ -24,7 +27,9 @@ let cleanedUp = false;
 let currentWorkspace = null;
 let embeddedBrowser = null;
 let pluginOperation = null;
+let diagnosticOperation = null;
 let localPreview = null;
+let desktopUpdater = null;
 
 async function fetchDesktopBuffer(url, headers = {}, options = {}) {
   const timeoutMs = Number(options.timeoutMs) || 15000;
@@ -108,7 +113,9 @@ function loadSettings() {
       fontFamily: '',
       fontSize: '',
       density: ''
-    }
+    },
+    browser: { version: 3, tabs: [], activeIndex: 0, bookmarks: [], history: [] },
+    update: { mode: 'default', channel: 'stable', skippedVersion: '' }
   };
   try {
     if (fs.existsSync(file)) {
@@ -124,6 +131,52 @@ function loadSettings() {
 function writeSettings(settings) {
   fs.mkdirSync(app.getPath('userData'), { recursive: true });
   fs.writeFileSync(path.join(app.getPath('userData'), 'settings.json'), JSON.stringify(settings, null, 2));
+}
+
+function updatePreferences() {
+  return normalizeUpdatePreferences(loadSettings().update);
+}
+
+function saveUpdatePreferences(preferences) {
+  const settings = loadSettings();
+  settings.update = normalizeUpdatePreferences(preferences);
+  writeSettings(settings);
+}
+
+function currentDesktopComponents() {
+  const nodePath = resolveNodeExecutable();
+  const pnpmDir = runtimePnpmPath();
+  return {
+    harness: resolveDshVersion(),
+    node: readPortableNodeVersion(nodePath),
+    pnpm: pnpmDir ? (() => {
+      try {
+        const candidates = [path.join(pnpmDir, 'package.json'), path.join(pnpmDir, 'package', 'package.json')];
+        for (const file of candidates) {
+          if (!fs.existsSync(file)) continue;
+          const version = JSON.parse(fs.readFileSync(file, 'utf8')).version;
+          if (typeof version === 'string') return version;
+        }
+      } catch { /* ignore unreadable runtime metadata */ }
+      return null;
+    })() : null
+  };
+}
+
+function setupDesktopUpdater() {
+  if (desktopUpdater) return desktopUpdater;
+  desktopUpdater = new DesktopUpdateService({
+    app,
+    autoUpdater,
+    getPreferences: updatePreferences,
+    savePreferences: saveUpdatePreferences,
+    components: currentDesktopComponents(),
+    onState: (state) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('desktop-update:state', state);
+    }
+  });
+  desktopUpdater.initialize();
+  return desktopUpdater;
 }
 
 function ensureWorkspaceDir(workspace) {
@@ -334,8 +387,15 @@ function createMainWindow(url) {
     hostWindow: mainWindow,
     onState: (state) => {
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('browser:state', state);
+    },
+    onPersist: (browser) => {
+      const settings = loadSettings();
+      settings.browser = browser;
+      writeSettings(settings);
     }
   });
+
+  embeddedBrowser.restore(loadSettings().browser).catch(() => {});
 
   mainWindow.loadURL(url);
 }
@@ -469,6 +529,13 @@ ipcMain.handle('update:check', async () => {
     return { ok: false, message: error && error.message ? error.message : String(error) };
   }
 });
+ipcMain.handle('desktop-update:state', () => setupDesktopUpdater().snapshot());
+ipcMain.handle('desktop-update:check', () => setupDesktopUpdater().check(true));
+ipcMain.handle('desktop-update:download', () => setupDesktopUpdater().download());
+ipcMain.handle('desktop-update:skip', () => setupDesktopUpdater().skipAvailableVersion());
+ipcMain.handle('desktop-update:unskip', () => setupDesktopUpdater().clearSkippedVersion());
+ipcMain.handle('desktop-update:install', () => ({ ok: setupDesktopUpdater().quitAndInstall() }));
+ipcMain.handle('desktop-update:preferences', (_event, preferences) => setupDesktopUpdater().applyPreferences(preferences));
 
 // --- IPC for desktop plugin management ---
 ipcMain.handle('plugins:list', () => ({ ok: true, items: listInstalled() }));
@@ -499,6 +566,86 @@ ipcMain.handle('plugins:install', async (_event, item) => {
   finally { pluginOperation = null; }
 });
 ipcMain.handle('plugins:remove', (_event, name) => mutatePlugin('remove', name));
+ipcMain.handle('plugins:toggle', (_event, name, enabled) => {
+  if (pluginOperation) return { ok: false, message: '另一个插件操作正在进行' };
+  try { return { ok: true, ...setPluginEnabled(String(name || ''), Boolean(enabled)) }; }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('plugins:update', async (_event, name) => {
+  if (pluginOperation) return { ok: false, message: '另一个插件操作正在进行' };
+  pluginOperation = updateInstalledPlugin(String(name || ''), {
+    requestJson: desktopRequestJson,
+    requestBuffer: desktopRequestBuffer
+  });
+  try { return { ok: true, ...(await pluginOperation) }; }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+  finally { pluginOperation = null; }
+});
+
+async function diagnosticNetworkCheck(id, label, url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const response = await net.fetch(url, { method: 'HEAD', signal: controller.signal });
+    return { id, label, ok: response.ok, summary: response.ok ? `可访问 · HTTP ${response.status}` : `HTTP ${response.status}` };
+  } catch (error) {
+    return { id, label, ok: false, summary: error && error.name === 'AbortError' ? '连接超时' : '无法连接' };
+  } finally { clearTimeout(timer); }
+}
+
+async function runDesktopDiagnostics() {
+  const settings = loadSettings();
+  const pnpmDir = runtimePnpmPath();
+  const networkChecks = await Promise.all([
+    diagnosticNetworkCheck('network-deepseek', 'DeepSeek API 文档', 'https://api-docs.deepseek.com/'),
+    diagnosticNetworkCheck('network-github', 'GitHub', 'https://github.com/'),
+    diagnosticNetworkCheck('network-plugin-market', '插件目录', 'https://awesome-dsh-plugin.com/plugins.json')
+  ]);
+  return buildDiagnosticReport({
+    appVersion: app.getVersion(),
+    home: process.env.DSH_HOME || path.join(os.homedir(), '.dsh'),
+    workspace: ensureWorkspaceDir(settings.workspace),
+    nodePath: resolveNodeExecutable(),
+    dshBin: resolveDshBin(),
+    harnessVersion: resolveDshVersion(),
+    pnpmPath: pnpmDir && path.join(pnpmDir, 'pnpm.cmd'),
+    networkChecks,
+    serviceReady: Boolean(service && service.ready),
+    serviceUrl: service && service.url,
+    proxyEnabled: Boolean(process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY)
+  });
+}
+
+ipcMain.handle('diagnostics:run', async () => {
+  if (diagnosticOperation) return diagnosticOperation;
+  diagnosticOperation = runDesktopDiagnostics().then((report) => ({ ok: true, report }), (error) => ({ ok: false, message: error && error.message ? error.message : String(error) })).finally(() => { diagnosticOperation = null; });
+  return diagnosticOperation;
+});
+ipcMain.handle('diagnostics:repair', (_event, action) => {
+  try {
+    if (action === 'credentials-version') return { ok: true, ...repairCredentialsVersion() };
+    if (action === 'backup-config') return { ok: true, ...backupConfiguration() };
+    if (action === 'clear-marketplace-cache') {
+      const result = clearMarketplaceCache();
+      resetMarketplaceCache();
+      return { ok: true, ...result };
+    }
+    throw new Error('不支持的修复操作');
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('diagnostics:export', async (_event, report) => {
+  try {
+    const selected = dialog.showSaveDialogSync(mainWindow, {
+      title: '导出脱敏诊断报告',
+      defaultPath: `dsh-diagnostics-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    });
+    if (!selected) return { ok: false, cancelled: true, message: '已取消导出' };
+    const safe = redactSecrets(JSON.stringify(report && typeof report === 'object' ? report : {}, null, 2));
+    fs.writeFileSync(selected, `${safe}\n`, 'utf8');
+    return { ok: true, path: selected };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
 ipcMain.handle('desktop:restart', () => {
   app.relaunch();
   app.quit();
@@ -537,6 +684,50 @@ ipcMain.handle('browser:reload', () => embeddedBrowser ? embeddedBrowser.reload(
 ipcMain.handle('browser:find', (_event, query, options) => embeddedBrowser ? embeddedBrowser.find(query, options || {}) : { open: false });
 ipcMain.handle('browser:find-stop', (_event, action) => embeddedBrowser ? embeddedBrowser.stopFind(action) : { open: false });
 ipcMain.handle('browser:zoom', (_event, delta) => embeddedBrowser ? embeddedBrowser.zoom(Number(delta)) : { open: false });
+ipcMain.handle('browser:selection', async () => {
+  try {
+    if (!embeddedBrowser) throw new Error('桌面浏览器尚未初始化');
+    return { ok: true, ...(await embeddedBrowser.selection()) };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('browser:screenshot', async () => {
+  try {
+    if (!embeddedBrowser) throw new Error('桌面浏览器尚未初始化');
+    return { ok: true, ...(await embeddedBrowser.screenshot()) };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('browser:download-open', async (_event, id) => {
+  const item = embeddedBrowser ? embeddedBrowser.download(id) : null;
+  if (!item || item.state !== 'completed' || !fs.existsSync(item.path)) return { ok: false, message: '下载文件不存在或尚未完成' };
+  const message = await shell.openPath(item.path);
+  return message ? { ok: false, message } : { ok: true };
+});
+ipcMain.handle('browser:download-show', (_event, id) => {
+  const item = embeddedBrowser ? embeddedBrowser.download(id) : null;
+  if (!item || !fs.existsSync(item.path)) return { ok: false, message: '下载文件不存在' };
+  shell.showItemInFolder(item.path);
+  return { ok: true };
+});
+ipcMain.handle('browser:download-retry', (_event, id) => {
+  try {
+    const item = embeddedBrowser ? embeddedBrowser.download(id) : null;
+    const tab = embeddedBrowser && embeddedBrowser.activeTab();
+    if (!item || !tab) throw new Error('找不到可重试的下载');
+    tab.view.webContents.downloadURL(normalizeBrowserUrl(item.url));
+    return { ok: true };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('browser:downloads-clear', () => embeddedBrowser ? embeddedBrowser.clearDownloads() : { open: false });
+ipcMain.handle('browser:library', () => embeddedBrowser ? { ok: true, ...embeddedBrowser.libraryState() } : { ok: false, message: '桌面浏览器尚未初始化' });
+ipcMain.handle('browser:bookmark-toggle', () => {
+  try { return embeddedBrowser ? { ok: true, ...embeddedBrowser.toggleBookmark() } : { ok: false, message: '桌面浏览器尚未初始化' }; }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('browser:bookmark-remove', (_event, url) => {
+  try { return embeddedBrowser ? { ok: true, ...embeddedBrowser.removeBookmark(url) } : { ok: false, message: '桌面浏览器尚未初始化' }; }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('browser:history-clear', () => embeddedBrowser ? { ok: true, ...embeddedBrowser.clearHistory() } : { ok: false, message: '桌面浏览器尚未初始化' });
 ipcMain.handle('browser:open-external', async () => {
   const state = embeddedBrowser ? embeddedBrowser.state() : { url: '' };
   try {
@@ -573,6 +764,7 @@ if (!gotLock) {
     Menu.setApplicationMenu(null);
     createTray();
     createLoadingWindow();
+    setupDesktopUpdater();
     launchService();
   });
 
@@ -589,6 +781,10 @@ if (!gotLock) {
         localPreview ? localPreview.stop() : Promise.resolve()
       ]).then(() => app.quit());
     }
+  });
+
+  app.on('quit', () => {
+    if (desktopUpdater) desktopUpdater.dispose();
   });
 
   app.on('activate', () => {

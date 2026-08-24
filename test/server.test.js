@@ -13,6 +13,13 @@ test('starts the web service without opening the system browser', () => {
     'web',
     '--no-open'
   ]);
+  assert.deepEqual(buildDshArgs('dsh-bin.js', 0), [
+    'dsh-bin.js',
+    'web',
+    '--no-open',
+    '--port',
+    '0'
+  ]);
   assert.deepEqual(buildDshArgs('dsh-bin.js', 55250), [
     'dsh-bin.js',
     'web',

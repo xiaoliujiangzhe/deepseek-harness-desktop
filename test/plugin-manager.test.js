@@ -14,6 +14,8 @@ const {
   resetMarketplaceCache,
   resolveGitHubCandidate,
   searchMarketplace,
+  setPluginEnabled,
+  updateInstalledPlugin,
   validateGitHubManifest,
   validatePackageName
 } = require('../src/plugin-manager');
@@ -61,6 +63,47 @@ test('lists profile-managed plugin dependencies', (t) => {
 
   assert.equal(listInstalled(home)[0].activeBundle, true);
   assert.equal(listInstalled(home)[0].version, '1.0.0');
+});
+
+test('enables and disables an installed plugin without removing its dependency', (t) => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-plugin-toggle-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const profile = path.join(home, 'profiles', 'web');
+  fs.mkdirSync(profile, { recursive: true });
+  fs.writeFileSync(path.join(profile, 'package.json'), JSON.stringify({
+    dependencies: { 'dsh-demo': '1.0.0' },
+    dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'dsh-demo'] } }
+  }));
+  const disabled = setPluginEnabled('dsh-demo', false, { home });
+  assert.equal(disabled.changed, true);
+  assert.equal(listInstalled(home)[0].activeBundle, false);
+  const manifest = JSON.parse(fs.readFileSync(path.join(profile, 'package.json'), 'utf8'));
+  assert.equal(manifest.dependencies['dsh-demo'], '1.0.0');
+  assert.deepEqual(manifest.dsh.profile.bundles, ['@deepseek-ai/dsh-base']);
+  assert.equal(setPluginEnabled('dsh-demo', true, { home }).enabled, true);
+});
+
+test('reports whether a plugin update changed the installed version', async (t) => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-plugin-update-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const profile = path.join(home, 'profiles', 'web');
+  const plugin = path.join(profile, 'node_modules', 'dsh-demo');
+  fs.mkdirSync(plugin, { recursive: true });
+  fs.writeFileSync(path.join(profile, 'package.json'), JSON.stringify({
+    dependencies: { 'dsh-demo': '1.0.0' },
+    dsh: { profile: { bundles: ['dsh-demo'] } }
+  }));
+  fs.writeFileSync(path.join(plugin, 'package.json'), JSON.stringify({ name: 'dsh-demo', version: '1.0.0' }));
+  const result = await updateInstalledPlugin('dsh-demo', {
+    home,
+    runCommand: async () => {
+      fs.writeFileSync(path.join(plugin, 'package.json'), JSON.stringify({ name: 'dsh-demo', version: '1.1.0' }));
+      return { restartRequired: true };
+    }
+  });
+  assert.equal(result.updated, true);
+  assert.equal(result.previousVersion, '1.0.0');
+  assert.equal(result.version, '1.1.0');
 });
 
 test('downloads the marketplace once and filters later searches from memory', async (t) => {

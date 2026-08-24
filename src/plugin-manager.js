@@ -230,18 +230,51 @@ function listInstalled(home) {
   if (!fs.existsSync(manifestFile)) return [];
   const profile = readJson(manifestFile);
   const bundleSet = new Set((profile.dsh && profile.dsh.profile && profile.dsh.profile.bundles) || []);
+  const repositoryByPackage = new Map(Object.entries(readSourceRecords(home || defaultHome())).flatMap(([repositoryUrl, record]) => (
+    record && validatePackageName(record.packageName) ? [[record.packageName, { repositoryUrl, ...record }]] : []
+  )));
   return Object.entries(profile.dependencies || {}).map(([name, requested]) => {
     let installed = null;
     try { installed = readJson(path.join(dir, 'node_modules', ...name.split('/'), 'package.json')); } catch {}
+    const sourceRecord = repositoryByPackage.get(name);
     return {
       name,
       requested,
       version: installed && typeof installed.version === 'string' ? installed.version : null,
       description: installed && typeof installed.description === 'string' ? installed.description : '',
       activeBundle: bundleSet.has(name),
-      compatibility: compatibilityOf(installed, resolveDshVersion())
+      compatibility: compatibilityOf(installed, resolveDshVersion()),
+      sourceKind: sourceRecord ? 'github' : 'npm',
+      repositoryUrl: sourceRecord ? sourceRecord.repositoryUrl : null,
+      installedCommit: sourceRecord && typeof sourceRecord.commit === 'string' ? sourceRecord.commit : null
     };
   });
+}
+
+function setPluginEnabled(name, enabled, options = {}) {
+  if (!validatePackageName(name)) throw new Error('插件包名不合法');
+  const home = options.home || defaultHome();
+  const dir = profileDir(home);
+  const manifestFile = path.join(dir, 'package.json');
+  if (!fs.existsSync(manifestFile)) throw new Error('web profile 尚未初始化');
+  const profile = readJson(manifestFile);
+  if (!profile.dependencies || !Object.prototype.hasOwnProperty.call(profile.dependencies, name)) throw new Error('插件尚未安装');
+  if (!profile.dsh || !profile.dsh.profile || !Array.isArray(profile.dsh.profile.bundles)) throw new Error('web profile 缺少 bundle 配置');
+  const bundles = profile.dsh.profile.bundles;
+  const active = bundles.includes(name);
+  if (active === Boolean(enabled)) return { changed: false, enabled: active, restartRequired: false };
+  const backup = backupProfile(home);
+  profile.dsh.profile.bundles = enabled ? [...bundles, name] : bundles.filter((value) => value !== name);
+  const temp = `${manifestFile}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(temp, `${JSON.stringify(profile, null, 2)}\n`, 'utf8');
+    fs.renameSync(temp, manifestFile);
+  } catch (error) {
+    try { if (fs.existsSync(temp)) fs.rmSync(temp, { force: true }); } catch {}
+    restoreProfile(backup, home);
+    throw error;
+  }
+  return { changed: true, enabled: Boolean(enabled), restartRequired: true, backup };
 }
 
 function backupProfile(home) {
@@ -480,6 +513,37 @@ async function installMarketplacePlugin(item, options = {}) {
   return { ...result, packageName: candidate.name, version: candidate.version, commit: candidate.commit, sourceKind: 'github-verified' };
 }
 
+async function updateInstalledPlugin(name, options = {}) {
+  if (!validatePackageName(name)) throw new Error('插件包名不合法');
+  const home = options.home || defaultHome();
+  const installed = listInstalled(home).find((item) => item.name === name);
+  if (!installed) throw new Error('插件尚未安装');
+  const before = { version: installed.version, commit: installed.installedCommit };
+  const installPlugin = options.installPlugin || installMarketplacePlugin;
+  const runCommand = options.runCommand || runPluginCommand;
+  let result;
+  if (installed.sourceKind === 'github' && installed.repositoryUrl) {
+    result = await installPlugin({
+      name,
+      source: 'github',
+      installSpec: `github:${installed.repositoryUrl.replace(/^https?:\/\/github\.com\//i, '')}`,
+      repositoryUrl: installed.repositoryUrl
+    }, { ...options, home });
+  } else {
+    result = await runCommand('add', name, { ...options, home });
+  }
+  const current = listInstalled(home).find((item) => item.name === name);
+  return {
+    ...result,
+    packageName: name,
+    previousVersion: before.version,
+    version: current && current.version,
+    previousCommit: before.commit,
+    commit: current && current.installedCommit,
+    updated: Boolean(current && ((before.version && current.version !== before.version) || (before.commit && current.installedCommit !== before.commit)))
+  };
+}
+
 function formatPluginFailure(action, code, detail) {
   const verb = action === 'add' ? '安装' : '卸载';
   const raw = String(detail || '').replace(/\x1b\[[0-9;]*m/g, '');
@@ -508,8 +572,11 @@ module.exports = {
   resetMarketplaceCache,
   resolveGitHubCandidate,
   runPluginCommand,
+  runtimePnpmPath,
+  setPluginEnabled,
   safeManifestPath,
   searchMarketplace,
   validateGitHubManifest,
+  updateInstalledPlugin,
   validatePackageName
 };

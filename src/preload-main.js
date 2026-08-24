@@ -234,7 +234,8 @@ const CONTROLS_CSS = `
   padding: 14px 16px;
   border-bottom: 1px solid rgba(128,128,128,0.18);
 }
-#dshd-plugin-center {
+#dshd-plugin-center,
+#dshd-diagnostics-center {
   position: fixed;
   z-index: 2147483641;
   inset: 0 0 0 auto;
@@ -247,16 +248,20 @@ const CONTROLS_CSS = `
   border-left: 1px solid #dfe3e9;
   box-shadow: -12px 0 32px rgba(29, 36, 53, .12);
 }
-#dshd-plugin-center[hidden] { display: none !important; }
-.dshd-plugin-center-head {
+#dshd-plugin-center[hidden],
+#dshd-diagnostics-center[hidden] { display: none !important; }
+.dshd-plugin-center-head,
+.dshd-diagnostics-center-head {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 14px 0 18px;
   border-bottom: 1px solid #dfe3e9;
 }
-.dshd-plugin-center-head strong { font-size: 15px; }
-.dshd-plugin-center-head span { flex: 1; color: #6e7686; font-size: 12px; }
+.dshd-plugin-center-head strong,
+.dshd-diagnostics-center-head strong { font-size: 15px; }
+.dshd-plugin-center-head span,
+.dshd-diagnostics-center-head span { flex: 1; color: #6e7686; font-size: 12px; }
 .dshd-plugin-center-close { width: 30px; height: 30px; border: 0; color: #687083; background: transparent; cursor: pointer; font-size: 20px; }
 #dshd-plugin-center .dshd-plugin-standalone {
   position: static;
@@ -359,6 +364,54 @@ const CONTROLS_CSS = `
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
+.dshd-diagnostics-body { min-width: 0; overflow: auto; padding: 18px 24px 30px; background: #fff; }
+.dshd-diagnostics-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.dshd-diagnostics-summary { margin-bottom: 14px; padding: 11px 13px; border: 1px solid #dfe3e9; border-radius: 6px; color: #4e5665; background: #f8f9fb; font-size: 12px; line-height: 1.55; }
+.dshd-diagnostics-list { display: flex; flex-direction: column; gap: 8px; }
+.dshd-diagnostic-card { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 13px; border: 1px solid #e2e5eb; border-radius: 6px; }
+.dshd-diagnostic-dot { width: 9px; height: 9px; border-radius: 50%; background: #8b93a3; }
+.dshd-diagnostic-card.ok .dshd-diagnostic-dot { background: #2e9b56; }
+.dshd-diagnostic-card.warn .dshd-diagnostic-dot { background: #d08a16; }
+.dshd-diagnostic-card.error .dshd-diagnostic-dot { background: #cf3f35; }
+.dshd-diagnostic-copy { min-width: 0; }
+.dshd-diagnostic-copy strong { display: block; margin-bottom: 3px; font-size: 12px; }
+.dshd-diagnostic-copy span { display: block; overflow: hidden; color: #737b8b; font-size: 11px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.dshd-diagnostics-status { min-height: 18px; margin-top: 12px; color: #687083; font-size: 11px; white-space: pre-wrap; }
+.dshd-diagnostics-status.error { color: #b42318; }
+#dshd-update-center {
+  position: fixed;
+  z-index: 2147483641;
+  inset: 0 0 0 auto;
+  width: clamp(420px, 42vw, 680px);
+  display: grid;
+  grid-template-rows: 56px minmax(0, 1fr);
+  overflow: hidden;
+  color: #181b22;
+  background: #fff;
+  border-left: 1px solid #dfe3e9;
+  box-shadow: -12px 0 32px rgba(29, 36, 53, .12);
+}
+#dshd-update-center[hidden] { display: none !important; }
+.dshd-update-head { display: flex; align-items: center; gap: 10px; padding: 0 14px 0 18px; border-bottom: 1px solid #dfe3e9; }
+.dshd-update-head strong { font-size: 15px; }
+.dshd-update-head span { flex: 1; color: #6e7686; font-size: 12px; }
+.dshd-update-body { min-width: 0; overflow: auto; padding: 20px 24px 30px; background: #fff; }
+.dshd-update-status { padding: 14px; border: 1px solid #dfe3e9; border-radius: 7px; background: #f8f9fb; }
+.dshd-update-status strong { display: block; font-size: 16px; }
+.dshd-update-status p { margin: 7px 0 0; color: #687083; font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
+.dshd-update-status.error { color: #a92b24; border-color: #f0c7c4; background: #fff6f5; }
+.dshd-update-status.available, .dshd-update-status.ready { border-color: #b9c7ff; background: #f5f7ff; }
+.dshd-update-progress { height: 7px; margin-top: 14px; overflow: hidden; border-radius: 4px; background: #e7eaf0; }
+.dshd-update-progress > span { display: block; height: 100%; border-radius: inherit; background: #4d6bfe; transition: width .2s ease; }
+.dshd-update-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.dshd-update-section { margin-top: 22px; }
+.dshd-update-section h3 { margin: 0 0 9px; font-size: 12px; }
+.dshd-update-component { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid #edf0f4; color: #687083; font: 12px Consolas, monospace; }
+.dshd-update-component strong { color: #303746; font-weight: 600; }
+.dshd-update-notes { margin-top: 14px; padding: 12px; border: 1px solid #edf0f4; border-radius: 6px; color: #4e5665; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.dshd-update-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; color: #4e5665; font-size: 12px; }
+.dshd-update-field select { min-width: 150px; padding: 5px 7px; border: 1px solid #dfe3e9; border-radius: 5px; background: #fff; color: inherit; }
+.dshd-update-meta { margin-top: 14px; color: #8a92a1; font-size: 11px; }
 `;
 
 const WALLPAPER_CSS = `
@@ -539,70 +592,6 @@ function buildRow() {
   return row;
 }
 
-// ---------- update row ----------
-
-const UPDATE_ROW_ID = 'dsh-desktop-update-row';
-
-function buildUpdateRow() {
-  const row = el('div', '');
-  row.id = UPDATE_ROW_ID;
-  row.setAttribute('data-slot', 'settings.general.item');
-  row.appendChild(el('div', 'dshd-title', 'Harness 更新'));
-
-  const status = el('div', 'dshd-hint', '正在读取当前版本…');
-  const checkBtn = el('button', 'dshd-btn', '检查更新');
-  const hint = el('div', 'dshd-hint', '');
-
-  let current = null;
-  let latest = null;
-
-  const renderStatus = () => {
-    const cur = current === null ? '未检测到' : current;
-    if (latest === null) {
-      status.textContent = `当前 ${cur}`;
-      hint.textContent = '';
-    } else if (current !== latest) {
-      status.textContent = `当前 ${cur} → 官方最新 ${latest}`;
-      hint.textContent = '官方已出新版。请安装维护者发布的新桌面版；应用不会在本机临时下载或重建 Harness。';
-    } else {
-      status.textContent = `已是最新（${cur}）`;
-      hint.textContent = '';
-    }
-  };
-
-  const doCheck = async () => {
-    checkBtn.disabled = true;
-    status.textContent = '正在检查官方最新版本…';
-    const r = await ipcRenderer.invoke('update:check');
-    checkBtn.disabled = false;
-    if (!r || !r.ok) {
-      status.textContent = '检查失败：' + ((r && r.message) || '未知错误');
-      hint.textContent = '';
-      return;
-    }
-    current = r.current;
-    latest = r.latest;
-    renderStatus();
-  };
-
-  checkBtn.addEventListener('click', doCheck);
-
-  row.appendChild(status);
-  row.appendChild(checkBtn);
-  row.appendChild(hint);
-
-  // Prime the status line once, quietly.
-  ipcRenderer.invoke('update:check').then((r) => {
-    if (r && r.ok) {
-      current = r.current;
-      latest = r.latest;
-      renderStatus();
-    }
-  }).catch(() => { /* leave the placeholder text */ });
-
-  return row;
-}
-
 // ---------- plugin management in Settings -> General ----------
 
 const PLUGIN_ROW_ID = 'dsh-desktop-plugin-row';
@@ -670,7 +659,7 @@ function buildPluginSettingsRow() {
   const showRestart = () => {
     if (restartArea.querySelector('button')) return;
     const restart = el('button', 'dshd-btn dshd-plugin-restart', '重启桌面端');
-    restart.title = '安装或卸载完成后重新加载 Harness 插件树';
+    restart.title = '插件安装、更新、启停或卸载完成后重新加载 Harness 插件树';
     restart.addEventListener('click', () => ipcRenderer.invoke('desktop:restart'));
     restartArea.appendChild(restart);
   };
@@ -684,7 +673,7 @@ function buildPluginSettingsRow() {
         : '兼容性待核实';
     return {
       className: `dshd-plugin-compat ${value.status}`,
-      text: activeBundle === false ? `${text} · 未声明为 bundle` : text
+      text: activeBundle === false ? `${text} · 已停用` : text
     };
   };
 
@@ -709,6 +698,47 @@ function buildPluginSettingsRow() {
       const foot = el('div', 'dshd-plugin-card-foot');
       const compatibility = compatibilityLabel(item.compatibility, item.activeBundle);
       foot.appendChild(el('span', compatibility.className, compatibility.text));
+      const toggle = el('button', 'dshd-btn', item.activeBundle ? '停用' : '启用');
+      toggle.addEventListener('click', async () => {
+        toggle.disabled = true;
+        setStatus(`正在${item.activeBundle ? '停用' : '启用'} ${item.name}…`);
+        setCardStatus(card, cardStatus, 'working', '正在备份并修改 web profile bundle 列表…');
+        const response = await ipcRenderer.invoke('plugins:toggle', item.name, !item.activeBundle);
+        if (!response || !response.ok) {
+          setStatus('插件状态修改失败。', true);
+          setCardStatus(card, cardStatus, 'error', (response && response.message) || '操作失败');
+          toggle.disabled = false;
+          return;
+        }
+        setStatus(`已${item.activeBundle ? '停用' : '启用'} ${item.name}，重启后生效。`);
+        setCardStatus(card, cardStatus, 'success', '配置已保存，重启桌面端后生效。');
+        showRestart();
+        await loadInstalled(true);
+      });
+      foot.appendChild(toggle);
+      const update = el('button', 'dshd-btn', '检查更新');
+      update.addEventListener('click', async () => {
+        update.disabled = true;
+        update.textContent = '检查中…';
+        setStatus(`正在检查并更新 ${item.name}…`);
+        setCardStatus(card, cardStatus, 'working', item.sourceKind === 'github' ? '正在检查 GitHub 最新 commit 并重新校验成品…' : '正在从 npm 检查最新成品版本…');
+        const response = await ipcRenderer.invoke('plugins:update', item.name);
+        if (!response || !response.ok) {
+          setStatus('插件更新未完成。', true);
+          setCardStatus(card, cardStatus, 'error', (response && response.message) || '更新失败');
+          update.disabled = false;
+          update.textContent = '重试更新';
+          return;
+        }
+        update.textContent = response.updated ? '已更新' : '已是最新';
+        setStatus(`${item.name} 更新检查完成。${response.updated ? '发现并安装了新版本，' : '当前未发现版本变化，'}重启后完成验证。`);
+        setCardStatus(card, cardStatus, 'success', response.updated
+          ? `已从 ${response.previousVersion || response.previousCommit || '当前版本'} 更新到 ${response.version || response.commit || '最新来源'}。`
+          : '已重新校验并安装当前最新来源。');
+        showRestart();
+        await loadInstalled(true);
+      });
+      foot.appendChild(update);
       const remove = el('button', 'dshd-btn dshd-plugin-danger', '卸载');
       const cardStatus = el('div', 'dshd-plugin-card-status');
       remove.addEventListener('click', async () => {
@@ -766,32 +796,33 @@ function buildPluginSettingsRow() {
       const foot = el('div', 'dshd-plugin-card-foot');
       foot.appendChild(el('span', 'dshd-plugin-compat compatible', item.curated ? 'curated 来源' : '来源待核实'));
       const existing = installedByName.get(item.installedPackageName) || installedByName.get(item.installSpec) || installedByName.get(item.name);
-      const install = el('button', 'dshd-btn', existing ? '已安装' : (item.source === 'github' ? '校验并安装' : '安装'));
-      install.disabled = Boolean(existing);
+      const install = el('button', 'dshd-btn', existing ? '检查更新' : (item.source === 'github' ? '校验并安装' : '安装'));
       const cardStatus = el('div', 'dshd-plugin-card-status');
       install.addEventListener('click', async () => {
         install.disabled = true;
-        install.textContent = '安装中…';
-        setStatus(`正在安装 ${item.name}，请勿关闭桌面端。`);
+        install.textContent = existing ? '检查中…' : '安装中…';
+        setStatus(`正在${existing ? '检查并更新' : '安装'} ${item.name}，请勿关闭桌面端。`);
         setCardStatus(card, cardStatus, 'working', item.source === 'github'
           ? '正在锁定 GitHub commit，并检查 bundle、入口文件和安装脚本…'
           : '正在从 npm 获取成品包并备份 web profile…');
-        const response = await ipcRenderer.invoke('plugins:install', {
-          name: item.name,
-          installSpec: item.installSpec,
-          source: item.source,
-          repositoryUrl: item.repositoryUrl
-        });
+        const response = existing
+          ? await ipcRenderer.invoke('plugins:update', existing.name)
+          : await ipcRenderer.invoke('plugins:install', {
+            name: item.name,
+            installSpec: item.installSpec,
+            source: item.source,
+            repositoryUrl: item.repositoryUrl
+          });
         if (!response || !response.ok) {
           const message = (response && response.message) || '安装失败，请稍后重试。';
           setStatus('安装未完成，请查看对应插件的提示。', true);
           setCardStatus(card, cardStatus, 'error', message);
           install.disabled = false;
-          install.textContent = item.source === 'github' ? '重新校验' : '重试安装';
+          install.textContent = existing ? '重试更新' : (item.source === 'github' ? '重新校验' : '重试安装');
           return;
         }
-        install.textContent = '已安装';
-        setStatus(`已安装 ${item.name}。需要重启桌面端。`);
+        install.textContent = existing ? (response.updated ? '已更新' : '已是最新') : '已安装';
+        setStatus(`${existing ? '更新检查完成' : '已安装'} ${item.name}。需要重启桌面端。`);
         const sourceDetail = response.sourceKind === 'github-verified' && response.commit
           ? `已锁定并安装 commit ${response.commit.slice(0, 12)}。`
           : '成品包安装完成。';
@@ -866,7 +897,6 @@ function injectRow(rowId, builder) {
 function tryInject() {
   try {
     injectRow(ROW_ID, buildRow);
-    injectRow(UPDATE_ROW_ID, buildUpdateRow);
   } catch {
     /* ignore transient DOM races */
   }
@@ -911,22 +941,37 @@ const TOOLS_MIN_WIDTH = 420;
 const TOOLS_MAX_WIDTH = 1100;
 const TOOLS_KEEP_CHAT_WIDTH = 320;
 const TOOLS_RESIZE_RAIL_WIDTH = 10;
-const DEFAULT_BROWSER_URL = 'https://api-docs.deepseek.com/zh-cn/guides/vision/';
+const DEFAULT_BROWSER_URL = '';
 
 const TOOLS_CSS = `
 #${TOOLS_LAUNCHER_ID} {
   position: fixed;
   z-index: 2147483640;
   right: 12px;
-  bottom: 48px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   padding: 3px;
   border: 1px solid rgba(215, 219, 227, .94);
   border-radius: 6px;
   background: rgba(255, 255, 255, .96);
   box-shadow: 0 4px 14px rgba(29, 36, 53, .18);
+  cursor: grab;
+  touch-action: none;
 }
+#${TOOLS_LAUNCHER_ID}.dragging { cursor: grabbing; opacity: .9; }
 #${TOOLS_LAUNCHER_ID} { flex-direction: column; gap: 2px; }
+#${TOOLS_LAUNCHER_ID} .dshd-tools-drag-handle {
+  width: 34px;
+  height: 13px;
+  color: #8992a2;
+  cursor: grab;
+  font-size: 12px;
+  line-height: 11px;
+  text-align: center;
+  user-select: none;
+}
+#${TOOLS_LAUNCHER_ID}.dragging .dshd-tools-drag-handle { cursor: grabbing; }
 #${TOOLS_LAUNCHER_ID}[hidden], #${TOOLS_SHELL_ID}[hidden] { display: none !important; }
 #${TOOLS_LAUNCHER_ID} button,
 #${TOOLS_SHELL_ID} button,
@@ -950,7 +995,7 @@ const TOOLS_CSS = `
   inset: 0 0 0 auto;
   width: 44vw;
   display: grid;
-  grid-template-rows: 44px 38px 46px minmax(0, 1fr);
+  grid-template-rows: 44px 38px 46px auto auto auto minmax(0, 1fr);
   overflow: hidden;
   color: #181b22;
   background: #fff;
@@ -970,6 +1015,9 @@ const TOOLS_CSS = `
 .dshd-local-badge.visible { display: inline-block; }
 .dshd-tool-expand { width: 30px; height: 30px; border: 1px solid #dfe3e9; border-radius: 4px; color: #596172; background: #fff; cursor: pointer; font-size: 16px; }
 .dshd-tool-expand:hover { color: #4d6bfe; background: #edf0ff; border-color: #bdc6ff; }
+.dshd-tool-action { position: relative; width: 30px; height: 30px; padding: 0; border: 1px solid #dfe3e9; border-radius: 4px; color: #596172; background: #fff; cursor: pointer; font-size: 14px; }
+.dshd-tool-action:hover { color: #4d6bfe; background: #edf0ff; border-color: #bdc6ff; }
+.dshd-tool-action.has-items::after { content: ''; position: absolute; width: 6px; height: 6px; margin: -2px 0 0 -2px; border-radius: 50%; background: #4d6bfe; }
 .dshd-browser-resize-rail {
   position: absolute;
   z-index: 2;
@@ -1036,7 +1084,7 @@ const TOOLS_CSS = `
 .dshd-tab-new:hover { color: #4d6bfe; background: #e8ebf9; }
 .dshd-browser-chrome {
   display: grid;
-  grid-template-columns: 32px 32px 32px minmax(90px, 1fr) 32px 32px 32px;
+  grid-template-columns: 32px 32px 32px minmax(90px, 1fr) 32px 32px 32px 32px;
   gap: 6px;
   align-items: center;
   padding: 6px 10px;
@@ -1048,13 +1096,38 @@ const TOOLS_CSS = `
 .dshd-browser-chrome button:disabled { opacity: .38; cursor: default; }
 .dshd-browser-url { min-width: 0; height: 32px; padding: 0 10px; border: 1px solid #d7dbe3; border-radius: 4px; color: #404755; background: #fff; font-size: 12px; }
 .dshd-browser-find { display: none; grid-template-columns: minmax(100px, 1fr) auto 30px 30px 30px; gap: 5px; align-items: center; padding: 4px 10px 4px 16px; background: #fafbfc; border-bottom: 1px solid #dfe3e9; }
-#${TOOLS_SHELL_ID}.find-open { grid-template-rows: 44px 38px 46px 40px minmax(0, 1fr); }
 #${TOOLS_SHELL_ID}.find-open .dshd-browser-find { display: grid; }
-#${TOOLS_SHELL_ID}.find-open .dshd-browser-resize-rail { top: 168px; }
-#${TOOLS_SHELL_ID}.find-open .dshd-browser-progress { top: 166px; }
 .dshd-browser-find input { min-width: 0; height: 30px; padding: 0 8px; border: 1px solid #d7dbe3; border-radius: 4px; color: #404755; background: #fff; font-size: 12px; }
 .dshd-browser-find span { min-width: 46px; color: #737b8b; font-size: 11px; text-align: center; }
 .dshd-browser-find button { width: 30px; height: 30px; padding: 0; border: 1px solid #dfe3e9; border-radius: 4px; color: #596172; background: #fff; cursor: pointer; }
+.dshd-browser-error { display: none; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 42px; padding: 6px 12px 6px 16px; color: #8f2019; background: #fff4f2; border-bottom: 1px solid #f0c8c4; font-size: 11px; }
+.dshd-browser-error.visible { display: grid; }
+.dshd-browser-error span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dshd-browser-error button { height: 28px; padding: 0 10px; border: 1px solid #d89c96; border-radius: 4px; color: #8f2019; background: #fff; cursor: pointer; }
+.dshd-downloads { display: none; max-height: 190px; overflow: auto; padding: 8px 10px 10px 16px; background: #fafbfc; border-bottom: 1px solid #dfe3e9; }
+.dshd-downloads.visible { display: block; }
+.dshd-download-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
+.dshd-download-head button { border: 0; color: #596172; background: transparent; cursor: pointer; font-size: 11px; }
+.dshd-download-empty { padding: 12px 0; color: #7c8493; font-size: 11px; text-align: center; }
+.dshd-download-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; padding: 7px 0; border-top: 1px solid #e7e9ee; }
+.dshd-download-name { overflow: hidden; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.dshd-download-meta { color: #737b8b; font-size: 10px; }
+.dshd-download-actions { grid-row: 1 / span 2; grid-column: 2; display: flex; align-items: center; gap: 4px; }
+.dshd-download-actions button { height: 26px; padding: 0 7px; border: 1px solid #dfe3e9; border-radius: 3px; color: #596172; background: #fff; cursor: pointer; font-size: 10px; }
+.dshd-download-track { grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 2px; background: #e6e8ed; }
+.dshd-download-track span { display: block; height: 100%; background: #4d6bfe; }
+.dshd-browser-library { display: none; max-height: 260px; overflow: auto; padding: 9px 10px 11px 16px; background: #fafbfc; border-bottom: 1px solid #dfe3e9; }
+.dshd-browser-library.visible { display: block; }
+.dshd-library-section + .dshd-library-section { margin-top: 12px; }
+.dshd-library-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; font-size: 12px; font-weight: 700; }
+.dshd-library-head button { border: 0; color: #596172; background: transparent; cursor: pointer; font-size: 10px; }
+.dshd-library-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; padding: 7px 0; border-top: 1px solid #e7e9ee; }
+.dshd-library-link { min-width: 0; border: 0; padding: 0; color: #333a48; background: transparent; cursor: pointer; text-align: left; }
+.dshd-library-link strong, .dshd-library-link small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dshd-library-link strong { font-size: 11px; }
+.dshd-library-link small { margin-top: 3px; color: #7b8392; font-size: 9px; }
+.dshd-library-remove { grid-column: 2; grid-row: 1; width: 24px; height: 24px; border: 0; border-radius: 3px; color: #7a8291; background: transparent; cursor: pointer; }
+.dshd-library-remove:hover { color: #b42318; background: #fceeed; }
 a[data-dsh-browser-link] { cursor: pointer; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: 3px; }
 `;
 
@@ -1065,8 +1138,44 @@ let browserUrl = DEFAULT_BROWSER_URL;
 let browserState = { open: false };
 let openBrowserPanel = null;
 let openPluginCenter = null;
+let closePluginCenter = null;
+let openDiagnosticsCenter = null;
+let closeDiagnosticsCenter = null;
+let openUpdateCenter = null;
+let closeUpdateCenter = null;
 let closeBrowserPanel = null;
 let browserPanelWidth = 0;
+let toolsLauncherPosition = null;
+
+function toolbarPositionLimits() {
+  const height = toolsLauncher ? toolsLauncher.offsetHeight : 150;
+  return { min: 12, max: Math.max(12, window.innerHeight - height - 12) };
+}
+
+function applyToolsLauncherPosition() {
+  if (!toolsLauncher) return;
+  const limits = toolbarPositionLimits();
+  const position = toolsLauncherPosition || { side: 'right', top: Math.round(window.innerHeight * 0.5 - toolsLauncher.offsetHeight * 0.5) };
+  const top = Math.max(limits.min, Math.min(limits.max, Number(position.top) || limits.min));
+  toolsLauncherPosition = { side: position.side === 'left' ? 'left' : 'right', top };
+  toolsLauncher.style.top = `${top}px`;
+  toolsLauncher.style.bottom = 'auto';
+  toolsLauncher.style.transform = 'none';
+  toolsLauncher.style.left = toolsLauncherPosition.side === 'left' ? '12px' : 'auto';
+  toolsLauncher.style.right = toolsLauncherPosition.side === 'right' ? '12px' : 'auto';
+}
+
+function loadToolsLauncherPosition() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('dsh-desktop-tools-position') || 'null');
+    if (saved && (saved.side === 'left' || saved.side === 'right')) toolsLauncherPosition = saved;
+  } catch { /* use the default position */ }
+}
+
+function saveToolsLauncherPosition() {
+  if (!toolsLauncherPosition) return;
+  localStorage.setItem('dsh-desktop-tools-position', JSON.stringify(toolsLauncherPosition));
+}
 
 function browserWidthLimits() {
   const max = Math.min(TOOLS_MAX_WIDTH, Math.max(TOOLS_MIN_WIDTH, Math.floor(window.innerWidth * 0.78)));
@@ -1099,11 +1208,280 @@ function bootPluginCenter() {
     panel.hidden = true;
     if (toolsLauncher) toolsLauncher.hidden = false;
   };
+  closePluginCenter = closePanel;
   close.addEventListener('click', closePanel);
   openPluginCenter = () => {
     if (closeBrowserPanel) closeBrowserPanel();
+    if (closeDiagnosticsCenter) closeDiagnosticsCenter();
+    if (closeUpdateCenter) closeUpdateCenter();
     panel.hidden = false;
     if (toolsLauncher) toolsLauncher.hidden = false;
+  };
+}
+
+function bootDiagnosticsCenter() {
+  if (document.getElementById('dshd-diagnostics-center')) return;
+  const panel = el('aside', '');
+  panel.id = 'dshd-diagnostics-center';
+  panel.hidden = true;
+  const head = el('header', 'dshd-diagnostics-center-head');
+  head.appendChild(el('strong', '', '诊断与修复中心'));
+  head.appendChild(el('span', '', '运行环境 · 配置 · 网络'));
+  const close = toolButton('×', 'dshd-plugin-center-close', '关闭诊断中心');
+  head.appendChild(close);
+  const body = el('div', 'dshd-diagnostics-body');
+  const toolbar = el('div', 'dshd-diagnostics-toolbar');
+  const run = el('button', 'dshd-btn', '重新检查');
+  const exportReport = el('button', 'dshd-btn', '导出脱敏报告');
+  const backup = el('button', 'dshd-btn', '备份运行配置');
+  const clearCache = el('button', 'dshd-btn', '清理插件目录缓存');
+  exportReport.disabled = true;
+  toolbar.appendChild(run);
+  toolbar.appendChild(exportReport);
+  toolbar.appendChild(backup);
+  toolbar.appendChild(clearCache);
+  const summary = el('div', 'dshd-diagnostics-summary', '尚未运行检查。');
+  const list = el('div', 'dshd-diagnostics-list');
+  const status = el('div', 'dshd-diagnostics-status');
+  body.appendChild(toolbar);
+  body.appendChild(summary);
+  body.appendChild(list);
+  body.appendChild(status);
+  panel.appendChild(head);
+  panel.appendChild(body);
+  document.body.appendChild(panel);
+  let lastReport = null;
+
+  const setStatus = (message, error = false) => {
+    status.textContent = message || '';
+    status.classList.toggle('error', error);
+  };
+  const performRepair = async (action, button) => {
+    button.disabled = true;
+    setStatus('正在执行操作…');
+    const response = await ipcRenderer.invoke('diagnostics:repair', action);
+    button.disabled = false;
+    if (!response || !response.ok) {
+      setStatus((response && response.message) || '操作失败', true);
+      return;
+    }
+    const location = response.destination || response.backup || response.directory || '';
+    setStatus(`${response.message || '操作完成'}${location ? `\n${location}` : ''}`);
+    await runChecks();
+  };
+  const render = (report) => {
+    lastReport = report;
+    exportReport.disabled = !report;
+    const counts = report.summary || { ok: 0, warn: 0, error: 0 };
+    summary.textContent = `检查完成：${counts.ok} 项正常，${counts.warn} 项提醒，${counts.error} 项错误。报告不会读取或显示 API Key 内容。`;
+    list.replaceChildren();
+    for (const check of report.checks || []) {
+      const card = el('article', `dshd-diagnostic-card ${check.status || 'warn'}`);
+      card.appendChild(el('span', 'dshd-diagnostic-dot'));
+      const copy = el('div', 'dshd-diagnostic-copy');
+      copy.appendChild(el('strong', '', check.label || check.id));
+      const detail = el('span', '', check.summary || '');
+      detail.title = check.summary || '';
+      copy.appendChild(detail);
+      card.appendChild(copy);
+      if (check.repair) {
+        const fix = el('button', 'dshd-btn', '安全修复');
+        fix.addEventListener('click', () => performRepair(check.repair, fix));
+        card.appendChild(fix);
+      } else card.appendChild(el('span', ''));
+      list.appendChild(card);
+    }
+  };
+  async function runChecks() {
+    run.disabled = true;
+    run.textContent = '检查中…';
+    setStatus('正在检查本地运行环境和三个公共网络端点…');
+    const response = await ipcRenderer.invoke('diagnostics:run');
+    run.disabled = false;
+    run.textContent = '重新检查';
+    if (!response || !response.ok) {
+      setStatus((response && response.message) || '诊断失败', true);
+      return;
+    }
+    render(response.report);
+    setStatus(`检查时间：${new Date(response.report.generatedAt).toLocaleString()}`);
+  }
+  run.addEventListener('click', runChecks);
+  exportReport.addEventListener('click', async () => {
+    if (!lastReport) return;
+    const response = await ipcRenderer.invoke('diagnostics:export', lastReport);
+    if (!response || !response.ok) {
+      if (!(response && response.cancelled)) setStatus((response && response.message) || '导出失败', true);
+      return;
+    }
+    setStatus(`脱敏报告已导出：\n${response.path}`);
+  });
+  backup.addEventListener('click', () => performRepair('backup-config', backup));
+  clearCache.addEventListener('click', () => performRepair('clear-marketplace-cache', clearCache));
+
+  const closePanel = () => {
+    panel.hidden = true;
+    if (toolsLauncher) toolsLauncher.hidden = false;
+  };
+  closeDiagnosticsCenter = closePanel;
+  close.addEventListener('click', closePanel);
+  openDiagnosticsCenter = () => {
+    if (closeBrowserPanel) closeBrowserPanel();
+    if (closePluginCenter) closePluginCenter();
+    if (closeUpdateCenter) closeUpdateCenter();
+    panel.hidden = false;
+    if (toolsLauncher) toolsLauncher.hidden = false;
+    if (!lastReport) runChecks();
+  };
+}
+
+function bootUpdateCenter() {
+  if (document.getElementById('dshd-update-center')) return;
+  const panel = el('aside', '');
+  panel.id = 'dshd-update-center';
+  panel.hidden = true;
+  const head = el('header', 'dshd-update-head');
+  head.appendChild(el('strong', '', '更新中心'));
+  head.appendChild(el('span', '', '桌面应用 · Harness · 运行时'));
+  const close = toolButton('×', 'dshd-plugin-center-close', '关闭更新中心');
+  head.appendChild(close);
+  const body = el('div', 'dshd-update-body');
+  const statusCard = el('section', 'dshd-update-status');
+  const statusTitle = el('strong', '', '准备检查更新');
+  const statusMessage = el('p', '', '更新会先检查，只有你确认后才下载。');
+  const progress = el('div', 'dshd-update-progress');
+  const progressBar = el('span', '');
+  progressBar.style.width = '0%';
+  progress.appendChild(progressBar);
+  statusCard.appendChild(statusTitle);
+  statusCard.appendChild(statusMessage);
+  statusCard.appendChild(progress);
+  const actions = el('div', 'dshd-update-actions');
+  const check = el('button', 'dshd-btn', '检查更新');
+  const download = el('button', 'dshd-btn', '下载更新');
+  const install = el('button', 'dshd-btn', '重启并安装');
+  const skip = el('button', 'dshd-btn', '跳过此版本');
+  const unskip = el('button', 'dshd-btn', '取消跳过');
+  actions.appendChild(check);
+  actions.appendChild(download);
+  actions.appendChild(install);
+  actions.appendChild(skip);
+  actions.appendChild(unskip);
+  statusCard.appendChild(actions);
+  body.appendChild(statusCard);
+
+  const componentSection = el('section', 'dshd-update-section');
+  componentSection.appendChild(el('h3', '', '当前内置组件'));
+  const components = el('div', '');
+  componentSection.appendChild(components);
+  const harnessActions = el('div', 'dshd-update-actions');
+  const harnessCheck = el('button', 'dshd-btn', '检查 Harness 上游');
+  const harnessStatus = el('div', 'dshd-update-meta', '上游检查只提供维护提示，不会修改本地运行时。');
+  harnessActions.appendChild(harnessCheck);
+  componentSection.appendChild(harnessActions);
+  componentSection.appendChild(harnessStatus);
+  body.appendChild(componentSection);
+
+  const preferenceSection = el('section', 'dshd-update-section');
+  preferenceSection.appendChild(el('h3', '', '更新偏好'));
+  const modeField = el('label', 'dshd-update-field');
+  modeField.appendChild(el('span', '', '自动检查'));
+  const mode = document.createElement('select');
+  mode.innerHTML = '<option value="default">自动检查（每天一次）</option><option value="start">仅启动时检查</option><option value="manual">仅手动检查</option><option value="none">关闭更新检查</option>';
+  modeField.appendChild(mode);
+  const channelField = el('label', 'dshd-update-field');
+  channelField.appendChild(el('span', '', '更新通道'));
+  const channel = document.createElement('select');
+  channel.innerHTML = '<option value="stable">Stable 稳定版</option><option value="preview">Preview 预览版</option>';
+  channelField.appendChild(channel);
+  preferenceSection.appendChild(modeField);
+  preferenceSection.appendChild(channelField);
+  body.appendChild(preferenceSection);
+  const notes = el('div', 'dshd-update-notes');
+  notes.hidden = true;
+  body.appendChild(notes);
+  const meta = el('div', 'dshd-update-meta', '应用版本信息读取中…');
+  body.appendChild(meta);
+  panel.appendChild(head);
+  panel.appendChild(body);
+  document.body.appendChild(panel);
+
+  let updateState = null;
+  const setStatus = (message, error = false) => {
+    statusMessage.textContent = message || '';
+    statusCard.classList.toggle('error', error);
+  };
+  const render = (state) => {
+    updateState = state || {};
+    const pct = state && state.progress ? Math.max(0, Math.min(100, Number(state.progress.percent) || 0)) : 0;
+    progressBar.style.width = `${pct}%`;
+    progress.hidden = !state || !['downloading', 'ready'].includes(state.status);
+    statusCard.className = `dshd-update-status ${state && state.status ? state.status : ''}`;
+    statusTitle.textContent = state && state.availableVersion && ['available', 'downloading', 'ready', 'skipped'].includes(state.status)
+      ? `发现桌面版本 ${state.availableVersion}`
+      : state && state.status === 'not-available' ? '当前已是最新版本' : (state && state.status === 'unsupported' ? '开发预览模式' : (state && state.status === 'error' ? '更新检查失败' : '更新中心'));
+    setStatus((state && state.message) || '准备检查更新', state && state.status === 'error');
+    check.disabled = !state || ['checking', 'downloading'].includes(state.status);
+    download.disabled = !state || state.status !== 'available';
+    install.disabled = !state || state.status !== 'ready';
+    skip.disabled = !state || !state.availableVersion || !['available', 'skipped'].includes(state.status);
+    unskip.disabled = !state || !state.preferences || !state.preferences.skippedVersion;
+    mode.value = (state && state.preferences && state.preferences.mode) || 'default';
+    channel.value = (state && state.preferences && state.preferences.channel) || 'stable';
+    if (state && state.releaseNotes) { notes.hidden = false; notes.textContent = state.releaseNotes; }
+    else notes.hidden = true;
+    const c = state && state.components || {};
+    components.replaceChildren();
+    for (const [label, value] of [['桌面版本', state && state.appVersion], ['Harness', c.harness], ['便携 Node.js', c.node], ['pnpm', c.pnpm]]) {
+      const item = el('div', 'dshd-update-component');
+      item.appendChild(el('span', '', label));
+      item.appendChild(el('strong', '', value || '未检测到'));
+      components.appendChild(item);
+    }
+    meta.textContent = state && state.lastCheckedAt ? `上次检查：${new Date(state.lastCheckedAt).toLocaleString()}` : '更新源：GitHub Releases';
+  };
+  const invoke = async (channelName) => {
+    try { render(await ipcRenderer.invoke(channelName)); }
+    catch (error) { setStatus(error && error.message ? error.message : String(error), true); }
+  };
+  check.addEventListener('click', () => invoke('desktop-update:check'));
+  harnessCheck.addEventListener('click', async () => {
+    harnessCheck.disabled = true;
+    harnessStatus.textContent = '正在读取官方 Harness 版本…';
+    try {
+      const result = await ipcRenderer.invoke('update:check');
+      if (!result || !result.ok) throw new Error((result && result.message) || '上游检查失败');
+      harnessStatus.textContent = result.current === result.latest
+        ? `Harness ${result.current} 已与官方 package.json 版本一致。`
+        : `本地 Harness ${result.current}，官方 package.json 为 ${result.latest}。请由维护者评估后随桌面版本升级。`;
+    } catch (error) {
+      harnessStatus.textContent = error && error.message ? error.message : String(error);
+    } finally {
+      harnessCheck.disabled = false;
+    }
+  });
+  download.addEventListener('click', () => invoke('desktop-update:download'));
+  install.addEventListener('click', () => invoke('desktop-update:install'));
+  skip.addEventListener('click', () => invoke('desktop-update:skip'));
+  unskip.addEventListener('click', () => invoke('desktop-update:unskip'));
+  mode.addEventListener('change', () => invokePreferences());
+  channel.addEventListener('change', () => invokePreferences());
+  async function invokePreferences() {
+    try { render(await ipcRenderer.invoke('desktop-update:preferences', { mode: mode.value, channel: channel.value })); }
+    catch (error) { setStatus(error && error.message ? error.message : String(error), true); }
+  }
+  ipcRenderer.on('desktop-update:state', (_event, state) => render(state));
+  ipcRenderer.invoke('desktop-update:state').then(render).catch(() => {});
+  const closePanel = () => { panel.hidden = true; if (toolsLauncher) toolsLauncher.hidden = false; };
+  closeUpdateCenter = closePanel;
+  close.addEventListener('click', closePanel);
+  openUpdateCenter = () => {
+    if (closeBrowserPanel) closeBrowserPanel();
+    if (closePluginCenter) closePluginCenter();
+    if (closeDiagnosticsCenter) closeDiagnosticsCenter();
+    panel.hidden = false;
+    if (toolsLauncher) toolsLauncher.hidden = false;
+    if (!updateState) invoke('desktop-update:state');
   };
 }
 
@@ -1115,7 +1493,13 @@ function setToolsLayout() {
   browserPanelWidth = clampBrowserWidth(browserPanelWidth);
   if (toolsShell) toolsShell.style.width = `${browserPanelWidth}px`;
   const panelLeft = Math.max(0, window.innerWidth - browserPanelWidth);
-  const contentTop = toolsShell && toolsShell.classList.contains('find-open') ? 168 : 128;
+  const extra = toolsShell ? [...toolsShell.querySelectorAll('.dshd-browser-find, .dshd-browser-error, .dshd-downloads, .dshd-browser-library')]
+    .reduce((sum, item) => sum + (getComputedStyle(item).display === 'none' ? 0 : item.offsetHeight), 0) : 0;
+  const contentTop = 128 + extra;
+  const rail = toolsShell && toolsShell.querySelector('.dshd-browser-resize-rail');
+  const progress = toolsShell && toolsShell.querySelector('.dshd-browser-progress');
+  if (rail) rail.style.top = `${contentTop}px`;
+  if (progress) progress.style.top = `${Math.max(0, contentTop - 2)}px`;
   ipcRenderer.invoke('browser:layout', {
     left: panelLeft + TOOLS_RESIZE_RAIL_WIDTH,
     top: contentTop,
@@ -1132,12 +1516,22 @@ function toolButton(label, className, title) {
 function makeToolShell() {
   const launcher = el('div', '');
   launcher.id = TOOLS_LAUNCHER_ID;
+  const dragHandle = el('div', 'dshd-tools-drag-handle', '⋮⋮');
+  dragHandle.title = '拖动工具栏';
+  dragHandle.setAttribute('aria-label', '拖动工具栏');
+  launcher.appendChild(dragHandle);
   const launchBrowser = toolButton('◫', '', '显示/隐藏侧边面板（Ctrl+Alt+B）');
   launchBrowser.setAttribute('aria-label', '显示/隐藏侧边面板');
   launcher.appendChild(launchBrowser);
   const launchPlugins = toolButton('🧩', '', '打开插件中心');
   launchPlugins.setAttribute('aria-label', '打开插件中心');
   launcher.appendChild(launchPlugins);
+  const launchDiagnostics = toolButton('🛠', '', '打开诊断与修复中心');
+  launchDiagnostics.setAttribute('aria-label', '打开诊断与修复中心');
+  launcher.appendChild(launchDiagnostics);
+  const launchUpdates = toolButton('⇧', '', '打开更新中心');
+  launchUpdates.setAttribute('aria-label', '打开更新中心');
+  launcher.appendChild(launchUpdates);
 
   const shell = el('aside', '');
   shell.id = TOOLS_SHELL_ID;
@@ -1146,11 +1540,23 @@ function makeToolShell() {
   const title = el('strong', '', '浏览器');
   const localBadge = el('span', 'dshd-local-badge', '本地预览');
   const meta = el('span', 'dshd-tool-meta dshd-browser-state', '准备就绪');
+  const quoteSelection = toolButton('❞', 'dshd-tool-action', '引用网页选中文字到聊天');
+  const capture = toolButton('▣', 'dshd-tool-action', '截取当前网页并加入聊天');
+  const downloadButton = toolButton('⇩', 'dshd-tool-action', '显示下载中心');
+  const libraryButton = toolButton('▤', 'dshd-tool-action', '显示书签和历史记录');
+  quoteSelection.setAttribute('aria-label', '引用网页选中文字到聊天');
+  capture.setAttribute('aria-label', '截取当前网页并加入聊天');
+  downloadButton.setAttribute('aria-label', '显示下载中心');
+  libraryButton.setAttribute('aria-label', '显示书签和历史记录');
   const expand = toolButton('⇱', 'dshd-tool-expand', '展开 / 恢复浏览器宽度');
   const close = toolButton('×', 'dshd-tool-close', '关闭内置浏览器');
   head.appendChild(title);
   head.appendChild(localBadge);
   head.appendChild(meta);
+  head.appendChild(quoteSelection);
+  head.appendChild(capture);
+  head.appendChild(downloadButton);
+  head.appendChild(libraryButton);
   head.appendChild(expand);
   head.appendChild(close);
 
@@ -1170,7 +1576,9 @@ function makeToolShell() {
   const address = el('input', 'dshd-browser-url');
   address.type = 'text';
   address.value = browserUrl;
+  address.placeholder = '输入网址，例如 deepseek.com';
   address.setAttribute('aria-label', '网址');
+  const bookmark = toolButton('☆', '', '添加当前网页到书签');
   const findButton = toolButton('⌕', '', '在页面中查找（Ctrl+F）');
   const zoom = toolButton('100%', '', '页面缩放：Ctrl++ / Ctrl+- / Ctrl+0');
   zoom.style.fontSize = '10px';
@@ -1179,6 +1587,7 @@ function makeToolShell() {
   chrome.appendChild(forward);
   chrome.appendChild(reload);
   chrome.appendChild(address);
+  chrome.appendChild(bookmark);
   chrome.appendChild(findButton);
   chrome.appendChild(zoom);
   chrome.appendChild(external);
@@ -1196,18 +1605,82 @@ function makeToolShell() {
   findBar.appendChild(findPrevious);
   findBar.appendChild(findNext);
   findBar.appendChild(closeFind);
+  const errorBar = el('div', 'dshd-browser-error');
+  const errorText = el('span', '', '网页加载失败');
+  const retryError = toolButton('重新加载', '', '重新加载当前网页');
+  errorBar.appendChild(errorText);
+  errorBar.appendChild(retryError);
+  const downloadsPanel = el('section', 'dshd-downloads');
+  const downloadHead = el('div', 'dshd-download-head');
+  downloadHead.appendChild(el('span', '', '下载中心'));
+  const clearDownloads = toolButton('清除已完成', '', '清除已结束的下载记录');
+  downloadHead.appendChild(clearDownloads);
+  const downloadList = el('div', 'dshd-download-list');
+  downloadsPanel.appendChild(downloadHead);
+  downloadsPanel.appendChild(downloadList);
+  const libraryPanel = el('section', 'dshd-browser-library');
+  const bookmarksSection = el('div', 'dshd-library-section');
+  const bookmarksHead = el('div', 'dshd-library-head');
+  bookmarksHead.appendChild(el('span', '', '书签'));
+  const bookmarksList = el('div', 'dshd-library-list');
+  bookmarksSection.appendChild(bookmarksHead);
+  bookmarksSection.appendChild(bookmarksList);
+  const historySection = el('div', 'dshd-library-section');
+  const historyHead = el('div', 'dshd-library-head');
+  historyHead.appendChild(el('span', '', '最近访问'));
+  const clearHistory = toolButton('清除历史', '', '清除内置浏览器历史记录');
+  historyHead.appendChild(clearHistory);
+  const historyList = el('div', 'dshd-library-list');
+  historySection.appendChild(historyHead);
+  historySection.appendChild(historyList);
+  libraryPanel.appendChild(bookmarksSection);
+  libraryPanel.appendChild(historySection);
   const progress = el('div', 'dshd-browser-progress');
 
   shell.appendChild(head);
   shell.appendChild(tabs);
   shell.appendChild(chrome);
   shell.appendChild(findBar);
+  shell.appendChild(errorBar);
+  shell.appendChild(downloadsPanel);
+  shell.appendChild(libraryPanel);
   shell.appendChild(progress);
   shell.appendChild(resizeRail);
   document.body.appendChild(launcher);
   document.body.appendChild(shell);
   toolsLauncher = launcher;
   toolsShell = shell;
+  loadToolsLauncherPosition();
+  applyToolsLauncherPosition();
+
+  let toolbarDragging = false;
+  let toolbarPointerId = null;
+  dragHandle.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    toolbarDragging = true;
+    toolbarPointerId = event.pointerId;
+    launcher.classList.add('dragging');
+    dragHandle.setPointerCapture?.(event.pointerId);
+  });
+  dragHandle.addEventListener('pointermove', (event) => {
+    if (!toolbarDragging || event.pointerId !== toolbarPointerId) return;
+    const limits = toolbarPositionLimits();
+    toolsLauncherPosition = {
+      side: event.clientX < window.innerWidth / 2 ? 'left' : 'right',
+      top: Math.max(limits.min, Math.min(limits.max, event.clientY - launcher.offsetHeight / 2))
+    };
+    applyToolsLauncherPosition();
+  });
+  const finishToolbarDrag = (event) => {
+    if (!toolbarDragging || (event && event.pointerId !== toolbarPointerId)) return;
+    toolbarDragging = false;
+    toolbarPointerId = null;
+    launcher.classList.remove('dragging');
+    applyToolsLauncherPosition();
+    saveToolsLauncherPosition();
+  };
+  dragHandle.addEventListener('pointerup', finishToolbarDrag);
+  dragHandle.addEventListener('pointercancel', finishToolbarDrag);
 
   const renderTabs = () => {
     tabList.replaceChildren();
@@ -1241,38 +1714,136 @@ function makeToolShell() {
     if (active) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
 
+  const formatBytes = (value) => {
+    const bytes = Math.max(0, Number(value) || 0);
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  };
+
+  const renderDownloads = () => {
+    const downloads = [...(browserState.downloads || [])].reverse();
+    downloadButton.classList.toggle('has-items', downloads.some((item) => item.state === 'progressing'));
+    downloadList.replaceChildren();
+    if (downloads.length === 0) {
+      downloadList.appendChild(el('div', 'dshd-download-empty', '还没有下载记录'));
+      return;
+    }
+    for (const item of downloads) {
+      const row = el('article', 'dshd-download-item');
+      row.appendChild(el('div', 'dshd-download-name', item.filename || '下载文件'));
+      const received = formatBytes(item.receivedBytes);
+      const total = item.totalBytes ? formatBytes(item.totalBytes) : '';
+      const labels = { progressing: '下载中', completed: '已完成', cancelled: '已取消', interrupted: '下载失败' };
+      row.appendChild(el('div', 'dshd-download-meta', `${labels[item.state] || item.state} · ${received}${total ? ` / ${total}` : ''}`));
+      const actions = el('div', 'dshd-download-actions');
+      if (item.state === 'completed') {
+        const openFile = toolButton('打开', '', '打开下载文件');
+        const showFile = toolButton('位置', '', '在文件夹中显示');
+        openFile.addEventListener('click', () => ipcRenderer.invoke('browser:download-open', item.id));
+        showFile.addEventListener('click', () => ipcRenderer.invoke('browser:download-show', item.id));
+        actions.appendChild(openFile);
+        actions.appendChild(showFile);
+      } else if (['cancelled', 'interrupted'].includes(item.state)) {
+        const retry = toolButton('重试', '', '重新下载');
+        retry.addEventListener('click', () => ipcRenderer.invoke('browser:download-retry', item.id));
+        actions.appendChild(retry);
+      }
+      row.appendChild(actions);
+      if (item.state === 'progressing') {
+        const track = el('div', 'dshd-download-track');
+        const bar = el('span', '');
+        bar.style.width = `${item.totalBytes ? Math.min(100, item.receivedBytes / item.totalBytes * 100) : 8}%`;
+        track.appendChild(bar);
+        row.appendChild(track);
+      }
+      downloadList.appendChild(row);
+    }
+  };
+
+  const renderLibrary = (library) => {
+    if (!library || library.ok === false) return;
+    bookmarksList.replaceChildren();
+    historyList.replaceChildren();
+    const renderEntry = (item, removable) => {
+      const row = el('article', 'dshd-library-item');
+      const link = el('button', 'dshd-library-link');
+      link.appendChild(el('strong', '', item.title || item.url));
+      link.appendChild(el('small', '', item.url));
+      link.title = item.url;
+      link.addEventListener('click', async () => {
+        libraryPanel.classList.remove('visible');
+        await setMode('browser', item.url);
+      });
+      row.appendChild(link);
+      if (removable) {
+        const remove = toolButton('×', 'dshd-library-remove', '移除书签');
+        remove.addEventListener('click', async () => renderLibrary(await ipcRenderer.invoke('browser:bookmark-remove', item.url)));
+        row.appendChild(remove);
+      } else {
+        const time = item.visitedAt ? new Date(item.visitedAt).toLocaleString() : '';
+        if (time) row.appendChild(el('small', 'dshd-download-meta', time));
+      }
+      return row;
+    };
+    const bookmarks = library.bookmarks || [];
+    const history = library.history || [];
+    if (!bookmarks.length) bookmarksList.appendChild(el('div', 'dshd-download-empty', '还没有书签'));
+    else for (const item of bookmarks) bookmarksList.appendChild(renderEntry(item, true));
+    if (!history.length) historyList.appendChild(el('div', 'dshd-download-empty', '还没有访问记录'));
+    else for (const item of history.slice(0, 50)) historyList.appendChild(renderEntry(item, false));
+  };
+
+  const loadLibrary = async () => {
+    const response = await ipcRenderer.invoke('browser:library');
+    renderLibrary(response);
+    return response;
+  };
+
   const updateBrowserState = (nextState) => {
     if (nextState && nextState.ok === false) return;
     browserState = nextState || { open: false, tabs: [] };
-    if (browserState.url && /^https?:/i.test(browserState.url)) {
+    if (browserState.home || !browserState.open) {
+      browserUrl = '';
+      address.value = '';
+    } else if (browserState.url && /^https?:/i.test(browserState.url)) {
       browserUrl = browserState.url;
       address.value = browserUrl;
     }
     back.disabled = !browserState.canGoBack;
     forward.disabled = !browserState.canGoForward;
+    external.disabled = Boolean(browserState.home) || !/^https?:/i.test(browserState.url || '');
+    bookmark.disabled = Boolean(browserState.home) || !/^https?:/i.test(browserState.url || '');
+    bookmark.textContent = browserState.bookmarked ? '★' : '☆';
+    bookmark.title = browserState.bookmarked ? '移除当前网页书签' : '添加当前网页到书签';
     const loading = Boolean(browserState.loading);
     progress.classList.toggle('loading', loading);
     meta.classList.toggle('loading', loading);
     meta.classList.toggle('error', Boolean(browserState.error));
     meta.textContent = browserState.error || (loading ? '正在加载…' : (browserState.title || '隔离网页内容'));
     meta.title = browserState.url || '';
+    errorBar.classList.toggle('visible', Boolean(browserState.error));
+    errorText.textContent = browserState.error || '';
     localBadge.classList.toggle('visible', /^http:\/\/127\.0\.0\.1:\d+\/.+\.html?(?:[?#]|$)/i.test(browserState.url || ''));
     zoom.textContent = `${Math.round((browserState.zoomFactor || 1) * 100)}%`;
     const result = browserState.findResult;
     findCount.textContent = result && result.matches ? `${result.activeMatchOrdinal || 0}/${result.matches}` : '0/0';
     renderTabs();
+    renderDownloads();
+    requestAnimationFrame(setToolsLayout);
   };
 
   const setMode = async (mode, nextUrl, options = {}) => {
     if (mode !== 'browser') return;
     toolMode = 'browser';
+    if (options.home) browserUrl = '';
     if (nextUrl) browserUrl = nextUrl;
     address.value = browserUrl;
     shell.hidden = false;
     launcher.hidden = true;
     setToolsLayout();
     let result;
-    if (nextUrl) result = await ipcRenderer.invoke(options.newTab ? 'browser:tab-new' : 'browser:open', browserUrl);
+    if (nextUrl || options.home) result = await ipcRenderer.invoke(options.newTab ? 'browser:tab-new' : 'browser:open', options.home ? null : browserUrl);
     else if (browserState.open) result = await ipcRenderer.invoke('browser:show');
     else result = await ipcRenderer.invoke('browser:open', browserUrl);
     setToolsLayout();
@@ -1286,8 +1857,9 @@ function makeToolShell() {
   };
 
   openBrowserPanel = (nextUrl, options = {}) => {
-    const pluginPanel = document.getElementById('dshd-plugin-center');
-    if (pluginPanel) pluginPanel.hidden = true;
+    if (closePluginCenter) closePluginCenter();
+    if (closeDiagnosticsCenter) closeDiagnosticsCenter();
+    if (closeUpdateCenter) closeUpdateCenter();
     return setMode('browser', nextUrl, options);
   };
 
@@ -1331,8 +1903,13 @@ function makeToolShell() {
     setToolsLayout();
   });
   launchPlugins.addEventListener('click', () => { if (openPluginCenter) openPluginCenter(); });
+  launchDiagnostics.addEventListener('click', () => { if (openDiagnosticsCenter) openDiagnosticsCenter(); });
+  launchUpdates.addEventListener('click', () => { if (openUpdateCenter) openUpdateCenter(); });
 
-  const navigate = () => setMode('browser', address.value.trim() || DEFAULT_BROWSER_URL);
+  const navigate = () => {
+    const value = address.value.trim();
+    return setMode('browser', value, { home: !value });
+  };
   const runFind = (forward = true, findNextMatch = false) => {
     ipcRenderer.invoke('browser:find', findInput.value, { forward, findNext: findNextMatch }).then(updateBrowserState);
   };
@@ -1347,6 +1924,45 @@ function makeToolShell() {
     setToolsLayout();
     updateBrowserState(await ipcRenderer.invoke('browser:find-stop', 'clearSelection'));
   };
+  const composer = () => document.querySelector('[data-composer-card] textarea:not(:disabled)');
+  const pasteIntoComposer = (dataTransfer) => {
+    const target = composer();
+    if (!target) throw new Error('当前聊天输入框不可用，请先打开一个可编辑会话');
+    const event = new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dataTransfer });
+    if (!target.dispatchEvent(event)) return;
+    throw new Error('DSH 没有接收这次粘贴内容');
+  };
+  const showActionResult = (message, error = false) => {
+    meta.classList.toggle('error', error);
+    meta.textContent = message;
+    setTimeout(() => updateBrowserState(browserState), 1800);
+  };
+  const quoteToChat = async () => {
+    const result = await ipcRenderer.invoke('browser:selection');
+    if (!result || !result.ok) return showActionResult((result && result.message) || '读取网页选文失败', true);
+    const quote = String(result.text || '').split(/\r?\n/).map((line) => `> ${line}`).join('\n');
+    const transfer = new DataTransfer();
+    transfer.setData('text/plain', `网页引用：${result.title || '未命名网页'}\n${result.url}\n\n${quote}\n\n`);
+    try {
+      pasteIntoComposer(transfer);
+      showActionResult('已将网页引用加入当前聊天草稿');
+    } catch (error) { showActionResult(error.message || String(error), true); }
+  };
+  const screenshotToChat = async () => {
+    showActionResult('正在截取网页…');
+    const result = await ipcRenderer.invoke('browser:screenshot');
+    if (!result || !result.ok) return showActionResult((result && result.message) || '网页截图失败', true);
+    try {
+      const binary = atob(result.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      const file = new File([bytes], result.filename || 'webpage.png', { type: 'image/png' });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      pasteIntoComposer(transfer);
+      showActionResult(`已将网页截图加入聊天草稿（${result.width}×${result.height}）`);
+    } catch (error) { showActionResult(error.message || String(error), true); }
+  };
 
   launchBrowser.addEventListener('click', () => {
     if (toolMode === 'browser' && !shell.hidden) closeTools();
@@ -1357,7 +1973,8 @@ function makeToolShell() {
   back.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:back')));
   forward.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:forward')));
   reload.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:reload')));
-  newTab.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:tab-new', DEFAULT_BROWSER_URL)));
+  retryError.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:reload')));
+  newTab.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:tab-new', null)));
   findButton.addEventListener('click', showFind);
   findInput.addEventListener('input', () => runFind(true, false));
   findInput.addEventListener('keydown', (event) => {
@@ -1369,7 +1986,35 @@ function makeToolShell() {
   closeFind.addEventListener('click', hideFind);
   zoom.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:zoom', 0)));
   external.addEventListener('click', () => ipcRenderer.invoke('browser:open-external'));
-  window.addEventListener('resize', setToolsLayout);
+  bookmark.addEventListener('click', async () => {
+    const response = await ipcRenderer.invoke('browser:bookmark-toggle');
+    if (!response || !response.ok) return showActionResult((response && response.message) || '书签操作失败', true);
+    browserState.bookmarked = Boolean(response.bookmarked);
+    bookmark.textContent = response.bookmarked ? '★' : '☆';
+    bookmark.title = response.bookmarked ? '移除当前网页书签' : '添加当前网页到书签';
+    if (libraryPanel.classList.contains('visible')) renderLibrary(response);
+    showActionResult(response.bookmarked ? '已添加书签' : '已移除书签');
+  });
+  quoteSelection.addEventListener('click', quoteToChat);
+  capture.addEventListener('click', screenshotToChat);
+  downloadButton.addEventListener('click', () => {
+    downloadsPanel.classList.toggle('visible');
+    libraryPanel.classList.remove('visible');
+    requestAnimationFrame(setToolsLayout);
+  });
+  libraryButton.addEventListener('click', async () => {
+    const showing = !libraryPanel.classList.contains('visible');
+    libraryPanel.classList.toggle('visible', showing);
+    downloadsPanel.classList.remove('visible');
+    if (showing) await loadLibrary();
+    requestAnimationFrame(setToolsLayout);
+  });
+  clearDownloads.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:downloads-clear')));
+  clearHistory.addEventListener('click', async () => renderLibrary(await ipcRenderer.invoke('browser:history-clear')));
+  window.addEventListener('resize', () => {
+    applyToolsLauncherPosition();
+    setToolsLayout();
+  });
   ipcRenderer.on('browser:state', (_event, nextState) => updateBrowserState(nextState));
   ipcRenderer.on('browser:request-open', (_event, url) => {
     if (/^https?:\/\//i.test(String(url || ''))) openBrowserPanel(url, { newTab: Boolean(browserState.open) }).catch(() => {});
@@ -1407,6 +2052,7 @@ function makeToolShell() {
       ipcRenderer.invoke('browser:zoom', 0).then(updateBrowserState);
     }
   });
+  ipcRenderer.invoke('browser:state').then(updateBrowserState).catch(() => {});
   setToolsLayout();
 }
 
@@ -1418,13 +2064,15 @@ function bootTools() {
   (document.head || document.documentElement).appendChild(style);
   makeToolShell();
   bootPluginCenter();
+  bootDiagnosticsCenter();
+  bootUpdateCenter();
 
   const markExternalLinks = (root = document) => {
     const anchors = [];
     if (root && root.matches && root.matches('a[href]')) anchors.push(root);
     if (root && root.querySelectorAll) anchors.push(...root.querySelectorAll('a[href]'));
     for (const anchor of anchors) {
-      if (anchor.closest(`#${TOOLS_LAUNCHER_ID}, #${TOOLS_SHELL_ID}, [data-dsh-plugin-settings], #${ROW_ID}, #${UPDATE_ROW_ID}`)) continue;
+      if (anchor.closest(`#${TOOLS_LAUNCHER_ID}, #${TOOLS_SHELL_ID}, [data-dsh-plugin-settings], #${ROW_ID}, #dshd-update-center`)) continue;
       try {
         const url = new URL(anchor.href, window.location.href);
         if (['http:', 'https:'].includes(url.protocol) && url.origin !== window.location.origin) {
@@ -1447,7 +2095,7 @@ function bootTools() {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
     if (!anchor || !document.documentElement.contains(anchor)) return;
-    if (anchor.closest(`#${TOOLS_LAUNCHER_ID}, #${TOOLS_SHELL_ID}, [data-dsh-plugin-settings], #${ROW_ID}, #${UPDATE_ROW_ID}`)) return;
+    if (anchor.closest(`#${TOOLS_LAUNCHER_ID}, #${TOOLS_SHELL_ID}, [data-dsh-plugin-settings], #${ROW_ID}, #dshd-update-center`)) return;
     let url;
     try { url = new URL(anchor.href, window.location.href); } catch { return; }
     if (!['http:', 'https:'].includes(url.protocol) || url.origin === window.location.origin) return;

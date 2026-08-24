@@ -154,7 +154,7 @@ function sleep(ms) {
 /** Build CLI arguments for the web service hosted inside the desktop shell. */
 function buildDshArgs(bin, port) {
   const args = [bin, 'web', '--no-open'];
-  if (port) args.push('--port', String(port));
+  if (port !== null && port !== undefined) args.push('--port', String(port));
   return args;
 }
 

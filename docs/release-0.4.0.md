@@ -1,30 +1,30 @@
-# DeepSeek Harness Desktop v0.4.0
+# DeepSeek Harness Desktop 0.4.0
+
+这是当前准备发布到 GitHub 的桌面版本。版本号按发布顺序定为 `0.4.0`；本地此前出现的 `0.5.0` 已统一回退，避免跳过尚未发布的版本号。
 
 ## 本次更新
 
-- 内置浏览器升级为多标签工作台，可新建、切换和关闭标签页。
-- 增加加载和错误状态、页内查找、50%–200% 缩放、系统浏览器打开及常用快捷键。
-- 浏览器面板可拖动调整宽度；隐藏后保留页面和标签，不再重复加载。
-- 点击 DSH 会话中的 `.html` / `.htm` 文件引用，会直接在右侧预览，不再弹出系统浏览器。
-- 本地预览支持 HTML 同目录的 JS、CSS、图片等资源，文件保存后自动刷新页面。
-- 包含 `v0.3.1` 的插件目录缓存、Electron 网络栈、GitHub 成品插件校验安装和便携 pnpm 修复。
+- 新增桌面更新中心。
+- 更新中心区分 Stable / Preview 通道。
+- 支持自动检查、仅启动检查、仅手动检查和关闭检查。
+- 更新下载改为用户确认后执行，下载完成后由用户确认重启安装。
+- 显示桌面版本、Harness、便携 Node.js 和 pnpm 版本。
+- 支持查看更新说明、下载进度、跳过版本和取消跳过。
+- 仍然保留原有 Harness 上游版本检查入口，作为维护者诊断信息；它不会修改用户机器上的 Harness。
 
-## 安全边界
+## 发布前检查
 
-- 网页标签运行在独立 `WebContentsView` 中，不注入 DSH preload，不获得 Node.js 或桌面 IPC 权限，权限请求默认拒绝。
-- 本地预览仅监听 `127.0.0.1` 随机端口，只允许当前工作区内的 HTML，并将资源访问限制到该 HTML 所在目录。
-- 此版本没有加入智能体网页点击、输入或登录授权能力。
+```powershell
+npm run verify:harness
+npm test
+npm run dist:win
+```
 
-## 已验证
+必须在干净 Windows 环境安装生成的 NSIS 安装包，确认首次启动、已有 `.dsh` 数据迁移、聊天、浏览器、插件中心、更新中心都正常后，再创建 GitHub Release。
 
-- `npm test`：21 项测试通过。
-- Windows 开发版：多标签、页面加载、面板宽度调整已人工验证。
-- Windows `win-unpacked`：使用隔离 DSH_HOME 完成首次 profile 初始化，并从启动页进入 Harness 主界面。
-- `npm run dist:win`：构建及打包后验收通过。
-- 安装包：`DeepSeek Harness Setup 0.4.0.exe`（148,799,339 bytes，141.91 MiB）。
-- SHA256：`5681CD836E4706A63553CAD831D4DC5E3628653D41917E4B716FFDBA32DD8EA5`。
-- 包内版本：Harness `0.1.1-rc.2`、便携 Node `v24.18.0`、便携 pnpm `11.21.0`。
+## 不包含的行为
 
-## 升级方式
-
-保留 GitHub 上已有的 `v0.3.0` 和 `v0.3.1`。用户下载 `v0.4.0` 安装包后直接覆盖安装即可；安装器不会删除 `~/.dsh` 中的会话、设置、凭据或附件。
+- 不跟随官方 Harness `master` 每次提交自动替换运行时。
+- 不让用户机器执行 `npm install` 或重建 Harness。
+- 不静默强制安装桌面更新。
+- 不上传 API Key、`.dsh` 数据、`node_modules` 或便携 Node 源文件。

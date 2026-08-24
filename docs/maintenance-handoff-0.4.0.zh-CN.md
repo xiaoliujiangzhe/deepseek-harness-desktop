@@ -11,6 +11,11 @@
 - `src/embedded-browser.js` 使用 `Map` 管理标签；每个标签拥有独立 `WebContentsView`，但共用隔离分区 `persist:dsh-desktop-browser`。
 - 只将当前标签附加到主窗口，隐藏工作台时分离视图但不销毁网页。
 - 支持标签新建、切换、关闭、favicon、加载和崩溃错误、前进/后退、刷新、页内查找及 50%–200% 缩放。
+- 远程 HTTP/HTTPS 标签和缩放比例保存到 Electron `settings.json`，重启后最多恢复 12 个；localhost / 127.0.0.1 临时页面不恢复。
+- 无网址时加载内置 `data:` 新标签主页，不把内部主页写进标签恢复数据；DeepSeek 文档和项目仓库仅作为快捷入口。旧预览版若只保存了自动种下的图像理解文档标签，会通过 settings version 迁移清除。
+- 下载中心由浏览器 session 的 `will-download` 驱动，展示接收字节、完成/取消/中断状态，并提供打开、定位和失败重试。
+- 选文通过隔离页面的 `executeJavaScript` 读取当前 selection；可见区域截图通过 `capturePage()` 取得 PNG。两者在主 renderer 中合成为原生 paste 事件，交给 Harness composer 自己更新草稿和图片附件。
+- 引用和截图只加入草稿，不自动发送；图片仍由 Harness 的数量、MIME、单图大小和消息总大小限制校验。
 - 前进/后退使用 Electron 35 的 `webContents.navigationHistory`。
 - `src/preload-main.js` 注入标签栏、地址栏、加载条、查找栏、缩放和外部打开控件，并同步计算 `WebContentsView` 的内容区域。
 
@@ -36,13 +41,15 @@ npm run verify:harness
 npm run dist:win
 ```
 
-- 自动化测试：21 项通过。
+- 自动化测试：27 项通过，新增多标签、主页迁移、恢复、选文、截图元数据和下载状态覆盖。
 - 2026-08-24 已使用隔离的 Electron userData 和 DSH_HOME 启动开发版，人工确认多标签网页、浏览器 chrome、面板布局和拖动宽度可用。
 - 隔离测试不修改用户真实 `~/.dsh`。
-- `npm run dist:win` 通过，打包后验收确认 Harness `0.1.1-rc.2`、便携 Node `v24.18.0` 和便携 pnpm `11.21.0`。
-- `release/win-unpacked/DeepSeek Harness.exe` 使用隔离 DSH_HOME 完成首次 web profile 初始化，启动页和 Harness 主界面均正常显示。
-- 最终安装包：`release/DeepSeek Harness Setup 0.4.0.exe`，148,799,339 bytes。
-- SHA256：`5681CD836E4706A63553CAD831D4DC5E3628653D41917E4B716FFDBA32DD8EA5`。
+- 此前的 `0.4.0` 安装包生成于新标签主页加入之前，已经失效；完成人工检查后必须重新执行 `npm run dist:win` 并记录新 SHA256。
+
+## 同轮启动修复
+
+- `src/server.js` 的 `buildDshArgs()` 过去把数字 `0` 当成“不传端口”，实际会让 DSH 使用 profile 默认的 3080。
+- 现在只在 `null` / `undefined` 时省略参数，桌面默认配置会真正执行 `web --no-open --port 0`，可与已经占用 3080 的正式版或命令行 DSH 并存。
 
 ## 发布注意
 

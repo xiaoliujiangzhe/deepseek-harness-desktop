@@ -23,13 +23,15 @@ DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CL
 - **共享数据**：不覆盖 `DSH_HOME`，会话/配置与命令行版本共用 `~/.dsh`。
 - **读条特效**：启动画面用真实阶段驱动进度（解析环境 → 启动服务 → 端口绑定 → HTTP 探测 → 就绪），百分比做缓动动画、渐变进度条带流光扫过特效。
 - **系统托盘**：关窗不退出，缩到托盘、服务常驻；单击托盘图标切换显示/隐藏，右键菜单可「显示 / 打开工作目录 / 退出」。单实例：重复双击快捷方式只唤起已有窗口。
-- **C 版分屏工作台**：保留 DSH 对话为主视图，右侧使用隔离的 Electron `WebContentsView` 提供多标签浏览器。支持拖动宽度、前进/后退、刷新、页内查找、缩放和外部打开；聊天中的外部网页链接会直接在右侧打开。
+- **C 版分屏工作台**：保留 DSH 对话为主视图，右侧使用隔离的 Electron `WebContentsView` 提供多标签浏览器。新标签进入桌面端主页，地址栏可输入网址或直接搜索；支持书签、最近访问、拖动宽度、标签恢复、前进/后退、刷新、页内查找、缩放、下载中心和外部打开，聊天中的外部网页链接会直接在右侧打开。
+- **网页进入聊天**：可把网页选中文字附带标题与 URL 引用到当前草稿，也可把当前可见网页截图作为图片加入草稿；图片继续走 Harness 原生附件限制和发送流程，不会自动发送。
 - **本地 HTML 预览**：点击会话中的 `.html` / `.htm` 文件引用，会在右侧工作台启动仅监听本机的临时预览服务。JS、CSS、图片等相对资源可正常加载，保存文件后页面自动刷新。
-- **插件中心**：位于主界面工具栏的独立侧边工作台，不改动 Harness 原生「插件」页；使用 dsh-market 同源的 `awesome-dsh-plugin` curated 目录。目录缓存 6 小时，后续搜索直接在本地过滤。npm 成品包可直接安装；GitHub 来源会先锁定 commit，并校验 package manifest、bundle patch、成品入口和生命周期脚本，仅允许无需现场构建的成品源码。安装前备份 web profile，失败自动恢复。
+- **插件中心**：位于主界面工具栏的独立侧边工作台，不改动 Harness 原生「插件」页；使用 dsh-market 同源的 `awesome-dsh-plugin` curated 目录。目录缓存 6 小时，后续搜索直接在本地过滤。支持安装、更新、启用、停用和卸载；GitHub 来源会先锁定 commit，并校验 package manifest、bundle patch、成品入口和生命周期脚本。修改前备份 web profile，失败自动恢复。
+- **诊断与修复中心**：从主界面工具栏独立打开，检查桌面运行时、Harness profile、代理和公共网络端点；可备份运行配置、安全修复凭据 version、清理插件目录缓存，并导出不包含 API Key 的脱敏报告。
 - **主界面皮肤（外观自定义）**：集成进 Harness 网页自己的「设置 → 通用设置」里，新增一个「桌面外观」区块，可**上传图片当背景**、调背景模糊/变暗、改字体字号、布局密度、强调色，并支持**自定义 CSS**，保存后实时生效。深浅色模式在 Harness 设置里切换。
 - **DeepSeek 原生多模态**：Harness `0.1.1-rc.2` 内置 `deepseek-v4-flash-vision-exp`，可直接向 DeepSeek 官方路由发送图片，不再依赖桌面项目的识图兜底补丁。
 - **可恢复升级**：检测到旧 Harness 插件目录时先改名备份，再由新 CLI 重建；`sessions`、`attachments`、`settings.yaml`、`.credentials.yaml` 和 `cordis.patch.yml` 不参与迁移。
-- **检查更新（Harness 更新）**：「设置 → 通用设置」里的「Harness 更新」区块显示桌面版实际启动的版本。应用只检查和提醒，由维护者更新锁定依赖并发布新安装包。
+- **桌面更新中心**：从主界面工具栏打开，显示桌面版本、Harness、便携 Node.js 和 pnpm；支持 Stable / Preview 通道、自动/手动检查、用户确认下载、下载进度、跳过版本和重启安装。开发预览版只显示状态，正式安装包通过 GitHub Releases 更新。
 
 ## 目录结构
 
@@ -38,6 +40,7 @@ src/
   main.js        Electron 主进程（窗口、生命周期、单实例、IPC）
   server.js      服务管理器（定位 Node、spawn dsh web、就绪探测）
   embedded-browser.js  隔离多标签浏览器视图（导航、查找、缩放、权限策略）
+  diagnostics.js   运行环境检查、配置备份、安全修复与报告脱敏
   local-preview-server.js  本地 HTML 预览、资源限制与自动刷新
   plugin-manager.js    GitHub 插件索引与官方 DSH plugin 命令适配
   preload.js     启动画面 IPC 桥
@@ -117,10 +120,11 @@ API Key 默认从凭据引用 `DEEPSEEK_API_KEY` 解析。模型的实时可用�
 
 ## Harness 更新
 
-官方仓库（`deepseek-ai/deepseek-harness`）以 `master` 分支为最新，不发布 GitHub Release。桌面版在「设置 → 通用设置」里提供「Harness 更新」区块，只做**版本检查与提醒**，不在应用内自动升级。
+官方仓库（`deepseek-ai/deepseek-harness`）以 `master` 分支为最新，不发布 GitHub Release。桌面版更新中心提供两类检查：桌面应用从 GitHub Releases 下载已验证安装包；Harness 上游检查只提供维护提示，不在用户机器上自动重建 Harness。
 
-- **检查更新**：比对桌面版实际启动的 npm Harness 版本与官方 `master` 分支的 `package.json` 版本。
-- **升级方式**：维护者在 `package.json` 和锁文件中固定新版本，通过测试后发布新桌面安装包。客户端不在用户机器上临时重建 Harness。
+- **桌面版升级**：维护者发布新的 GitHub Release，应用检查 `latest.yml`，用户确认后下载并重启安装。
+- **Harness 上游检查**：比对桌面版实际启动的 npm Harness 版本与官方 `master` 分支的 `package.json` 版本；维护者还需检查 commit 变化，再在 `package.json` 和锁文件中固定新版本。
+- **升级方式**：通过测试后重新构建桌面安装包。客户端不在用户机器上临时重建 Harness。
 
 > 追新频率建议按需：不必官方每次提交都升，通常每几个版本、或有你确实需要的新功能/bugfix 时再升一次。
 
