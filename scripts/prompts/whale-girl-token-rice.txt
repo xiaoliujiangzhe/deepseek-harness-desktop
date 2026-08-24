@@ -1,0 +1,11 @@
+Use case: stylized-concept
+Asset type: desktop application startup mascot
+Primary request: Create an original chibi whale-girl mascot secretly and happily eating a bowl of white rice made from softly glowing token grains.
+Subject: A cute original whale-girl character with a blue-and-white palette, a small whale tail, fin-like hair ornaments, and a playful guilty expression. She holds a porcelain rice bowl in one arm and a spoon near her mouth. A few luminous token-shaped rice grains fall into the bowl.
+Style/medium: polished clean anime chibi illustration, soft cel shading, crisp silhouette, premium desktop application splash-screen asset.
+Composition/framing: full body, centered, compact silhouette, readable when displayed at 180 to 240 pixels, generous empty margin around the character.
+Lighting/mood: playful, mischievous, warm, friendly, subtle cyan glow from the token grains.
+Color palette: deep navy, whale blue, soft cyan, clean white, tiny warm gold accents.
+Background: a single flat vivid magenta chroma-key background (#ff00ff), with no shadows or objects touching the background, so it can be removed locally.
+Constraints: original character design, no copied fan-art pose, no text, no letters, no logo, no watermark, clean edges, exactly one character, exactly one rice bowl, exactly one spoon.
+Avoid: photorealism, busy scenery, gradients in the background, embedded typography, extra limbs, malformed hands, duplicate bowls, cropped body, low contrast edges.

@@ -227,6 +227,138 @@ const CONTROLS_CSS = `
 .dshd-textarea { width: 100%; min-height: 80px; resize: vertical; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; color: inherit; padding: 8px; font: 11.5px/1.5 Consolas, monospace; }
 .dshd-hint { font-size: 11px; opacity: 0.5; }
 .dshd-update-log { width: 100%; box-sizing: border-box; max-height: 180px; overflow: auto; margin: 8px 0 0; padding: 8px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; font: 11px/1.5 Consolas, monospace; white-space: pre-wrap; word-break: break-all; color: inherit; }
+#dsh-desktop-plugin-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(128,128,128,0.18);
+}
+#dshd-plugin-center {
+  position: fixed;
+  z-index: 2147483641;
+  inset: 0 0 0 auto;
+  width: clamp(460px, 48vw, 820px);
+  display: grid;
+  grid-template-rows: 56px minmax(0, 1fr);
+  overflow: hidden;
+  color: #181b22;
+  background: #fff;
+  border-left: 1px solid #dfe3e9;
+  box-shadow: -12px 0 32px rgba(29, 36, 53, .12);
+}
+#dshd-plugin-center[hidden] { display: none !important; }
+.dshd-plugin-center-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 0 18px;
+  border-bottom: 1px solid #dfe3e9;
+}
+.dshd-plugin-center-head strong { font-size: 15px; }
+.dshd-plugin-center-head span { flex: 1; color: #6e7686; font-size: 12px; }
+.dshd-plugin-center-close { width: 30px; height: 30px; border: 0; color: #687083; background: transparent; cursor: pointer; font-size: 20px; }
+#dshd-plugin-center .dshd-plugin-standalone {
+  position: static;
+  min-width: 0;
+  overflow: auto;
+  box-sizing: border-box;
+  gap: 18px !important;
+  padding: 18px 24px 28px !important;
+  border-bottom: 0 !important;
+  background: #fff;
+}
+#dshd-plugin-center .dshd-plugin-list { max-height: none; overflow: visible; }
+#dshd-plugin-center .dshd-plugin-card { padding: 13px 14px; border: 1px solid #e2e5eb; border-radius: 6px; background: #fff; }
+#dshd-plugin-center .dshd-plugin-card:hover { border-color: #bdc6ff; box-shadow: 0 2px 10px rgba(29, 36, 53, .06); }
+#dshd-plugin-center .dshd-plugin-card-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+#dshd-plugin-center .dshd-plugin-card-source { color: #6e7686; font-size: 11px; }
+#dshd-plugin-center .dshd-plugin-card-link { color: #4d6bfe; font-size: 11px; text-decoration: none; }
+#dshd-plugin-center .dshd-plugin-card-link:hover { text-decoration: underline; }
+#dshd-plugin-center .dshd-plugin-card-meta { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; color: #6e7686; font-size: 11px; }
+#dshd-plugin-center .dshd-plugin-card-meta strong { color: #4e5665; font-weight: 650; }
+.dshd-plugin-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dshd-plugin-head-copy { min-width: 0; }
+.dshd-plugin-head-copy .dshd-hint { margin-top: 4px; line-height: 1.55; }
+.dshd-plugin-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dshd-plugin-search { flex: 1 1 220px; min-width: 160px; height: 31px; box-sizing: border-box; padding: 0 9px; border: 1px solid rgba(128,128,128,0.28); border-radius: 5px; color: inherit; background: rgba(255,255,255,0.06); font-size: 12px; }
+.dshd-plugin-action { white-space: nowrap; }
+.dshd-plugin-section { display: flex; flex-direction: column; gap: 7px; }
+.dshd-plugin-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 700; }
+.dshd-plugin-section-title span { font-size: 11px; font-weight: 400; opacity: .55; }
+.dshd-plugin-list { display: flex; flex-direction: column; gap: 7px; max-height: 300px; overflow: auto; }
+.dshd-plugin-card { padding: 10px 0; border-top: 1px solid rgba(128,128,128,0.18); }
+.dshd-plugin-card-head { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.dshd-plugin-card-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px Consolas, monospace; }
+.dshd-plugin-card-version { font: 11px Consolas, monospace; opacity: .55; }
+.dshd-plugin-card-description { margin: 5px 0 7px; font-size: 11px; line-height: 1.5; opacity: .72; }
+.dshd-plugin-card-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dshd-plugin-compat { min-width: 0; font-size: 11px; opacity: .6; }
+.dshd-plugin-compat.compatible { color: #287a45; opacity: 1; }
+.dshd-plugin-compat.declared { color: #9a6500; opacity: 1; }
+.dshd-plugin-danger { color: #b42318; border-color: rgba(180,35,24,0.35); }
+.dshd-plugin-status { min-height: 18px; font-size: 11px; line-height: 1.5; opacity: .62; white-space: pre-wrap; }
+.dshd-plugin-status.error { color: #b42318; opacity: 1; }
+.dshd-plugin-card-status { display: none; margin-top: 9px; padding: 8px 10px; border-radius: 4px; font-size: 11px; line-height: 1.5; }
+.dshd-plugin-card-status.visible { display: block; }
+.dshd-plugin-card-status.working { color: #3154c9; background: rgba(77,107,254,.09); }
+.dshd-plugin-card-status.error { color: #b42318; background: rgba(180,35,24,.08); }
+.dshd-plugin-card-status.success { color: #287a45; background: rgba(40,122,69,.09); }
+.dshd-plugin-card.working { border-color: rgba(77,107,254,.42); }
+.dshd-plugin-card button:disabled { cursor: wait; opacity: .62; }
+.dshd-plugin-empty { padding: 10px 0; font-size: 11px; line-height: 1.5; opacity: .58; }
+.dshd-plugin-restart { align-self: flex-start; }
+.dshd-plugin-standalone {
+  position: absolute;
+  z-index: 3;
+  top: 52px;
+  right: 0;
+  bottom: 0;
+  left: 200px;
+  overflow: auto;
+  box-sizing: border-box;
+  gap: 18px !important;
+  padding: 18px 24px 28px !important;
+  border-bottom: 0 !important;
+  background: inherit;
+}
+.dshd-plugin-standalone[hidden] { display: none !important; }
+.dshd-plugin-standalone .dshd-title { font-size: 17px; }
+.dshd-plugin-standalone .dshd-plugin-head-copy .dshd-hint { margin-top: 6px; font-size: 12px; }
+.dshd-plugin-standalone .dshd-plugin-search { height: 36px; padding: 0 11px; }
+.dshd-plugin-standalone .dshd-plugin-action { height: 36px; padding: 0 14px; }
+.dshd-plugin-standalone > .dshd-plugin-status {
+  min-height: 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(77,107,254,.15);
+  border-radius: 5px;
+  color: inherit;
+  background: rgba(77,107,254,.06);
+  opacity: .78;
+}
+.dshd-plugin-standalone > .dshd-plugin-status.error {
+  border-color: rgba(180,35,24,.18);
+  background: rgba(180,35,24,.07);
+}
+.dshd-plugin-standalone .dshd-plugin-section { gap: 10px; }
+.dshd-plugin-standalone .dshd-plugin-section-title { font-size: 13px; }
+.dshd-plugin-standalone .dshd-plugin-list { max-height: none; overflow: visible; gap: 9px; }
+.dshd-plugin-standalone .dshd-plugin-card {
+  padding: 12px 14px;
+  border: 1px solid rgba(128,128,128,0.2);
+  border-radius: 6px;
+  background: rgba(128,128,128,0.035);
+}
+.dshd-plugin-standalone .dshd-plugin-card-name { font-size: 13px; }
+.dshd-plugin-standalone .dshd-plugin-card-description {
+  display: -webkit-box;
+  margin: 7px 0 10px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 `;
 
 const WALLPAPER_CSS = `
@@ -471,6 +603,238 @@ function buildUpdateRow() {
   return row;
 }
 
+// ---------- plugin management in Settings -> General ----------
+
+const PLUGIN_ROW_ID = 'dsh-desktop-plugin-row';
+
+function buildPluginSettingsRow() {
+  const row = el('div', '');
+  row.id = PLUGIN_ROW_ID;
+  row.setAttribute('data-slot', 'settings.general.item');
+  row.setAttribute('data-dsh-plugin-settings', '');
+
+  const head = el('div', 'dshd-plugin-head');
+  const copy = el('div', 'dshd-plugin-head-copy');
+  copy.appendChild(el('div', 'dshd-title', '搜索与管理'));
+  copy.appendChild(el('div', 'dshd-hint', '目录来自 dsh-market 使用的 curated 插件索引。安装前会备份 web profile，插件变更后需要重启桌面端。'));
+  head.appendChild(copy);
+  row.appendChild(head);
+
+  const status = el('div', 'dshd-plugin-status', '正在读取已安装插件…');
+  row.appendChild(status);
+
+  const searchToolbar = el('div', 'dshd-plugin-toolbar');
+  const search = el('input', 'dshd-plugin-search');
+  search.type = 'search';
+  search.placeholder = '搜索插件名称、分类或关键词';
+  search.setAttribute('aria-label', '搜索插件仓库');
+  const searchButton = el('button', 'dshd-btn dshd-plugin-action', '搜索插件');
+  searchToolbar.appendChild(search);
+  searchToolbar.appendChild(searchButton);
+  row.appendChild(searchToolbar);
+
+  const installedSection = el('section', 'dshd-plugin-section');
+  const installedTitle = el('div', 'dshd-plugin-section-title');
+  installedTitle.appendChild(el('strong', '', '已安装'));
+  const installedCount = el('span', '', '读取中');
+  installedTitle.appendChild(installedCount);
+  const installedList = el('div', 'dshd-plugin-list');
+  installedSection.appendChild(installedTitle);
+  installedSection.appendChild(installedList);
+  row.appendChild(installedSection);
+
+  const marketplaceSection = el('section', 'dshd-plugin-section');
+  const marketplaceTitle = el('div', 'dshd-plugin-section-title');
+  marketplaceTitle.appendChild(el('strong', '', '插件目录'));
+  marketplaceTitle.appendChild(el('span', '', '来自 awesome-dsh-plugin curated registry'));
+  const marketplaceList = el('div', 'dshd-plugin-list');
+  marketplaceSection.appendChild(marketplaceTitle);
+  marketplaceSection.appendChild(marketplaceList);
+  row.appendChild(marketplaceSection);
+
+  const restartArea = el('div', 'dshd-row');
+  row.appendChild(restartArea);
+  let installedByName = new Map();
+
+  const setStatus = (message, isError = false) => {
+    status.textContent = message;
+    status.classList.toggle('error', isError);
+  };
+
+  const setCardStatus = (card, statusEl, kind, message) => {
+    card.classList.toggle('working', kind === 'working');
+    statusEl.className = `dshd-plugin-card-status visible ${kind}`;
+    statusEl.textContent = message;
+  };
+
+  const showRestart = () => {
+    if (restartArea.querySelector('button')) return;
+    const restart = el('button', 'dshd-btn dshd-plugin-restart', '重启桌面端');
+    restart.title = '安装或卸载完成后重新加载 Harness 插件树';
+    restart.addEventListener('click', () => ipcRenderer.invoke('desktop:restart'));
+    restartArea.appendChild(restart);
+  };
+
+  const compatibilityLabel = (compatibility, activeBundle) => {
+    const value = compatibility || { status: 'unknown' };
+    const text = value.status === 'compatible'
+      ? '兼容声明匹配'
+      : value.status === 'declared'
+        ? `待核实：${value.declared}`
+        : '兼容性待核实';
+    return {
+      className: `dshd-plugin-compat ${value.status}`,
+      text: activeBundle === false ? `${text} · 未声明为 bundle` : text
+    };
+  };
+
+  const renderEmpty = (container, message) => {
+    container.replaceChildren(el('div', 'dshd-plugin-empty', message));
+  };
+
+  const renderInstalled = (items) => {
+    installedList.replaceChildren();
+    installedCount.textContent = `${items.length} 个`;
+    if (!items.length) {
+      renderEmpty(installedList, '当前没有第三方插件。可以从下方 curated 目录开始浏览。');
+      return;
+    }
+    for (const item of items) {
+      const card = el('article', 'dshd-plugin-card');
+      const header = el('div', 'dshd-plugin-card-head');
+      header.appendChild(el('strong', 'dshd-plugin-card-name', item.name));
+      if (item.version) header.appendChild(el('span', 'dshd-plugin-card-version', item.version));
+      card.appendChild(header);
+      if (item.description) card.appendChild(el('div', 'dshd-plugin-card-description', item.description));
+      const foot = el('div', 'dshd-plugin-card-foot');
+      const compatibility = compatibilityLabel(item.compatibility, item.activeBundle);
+      foot.appendChild(el('span', compatibility.className, compatibility.text));
+      const remove = el('button', 'dshd-btn dshd-plugin-danger', '卸载');
+      const cardStatus = el('div', 'dshd-plugin-card-status');
+      remove.addEventListener('click', async () => {
+        remove.disabled = true;
+        remove.textContent = '卸载中…';
+        setStatus(`正在卸载 ${item.name}，请勿关闭桌面端。`);
+        setCardStatus(card, cardStatus, 'working', '正在卸载并备份 web profile…');
+        const response = await ipcRenderer.invoke('plugins:remove', item.name);
+        if (!response || !response.ok) {
+          const message = (response && response.message) || '卸载失败，请稍后重试。';
+          setStatus('卸载未完成，请查看对应插件的提示。', true);
+          setCardStatus(card, cardStatus, 'error', message);
+          remove.disabled = false;
+          remove.textContent = '重试卸载';
+          return;
+        }
+        setStatus(`已卸载 ${item.name}。需要重启桌面端。`);
+        setCardStatus(card, cardStatus, 'success', '卸载完成。重启桌面端后会从 Harness 插件树移除。');
+        showRestart();
+        await loadInstalled(true);
+      });
+      foot.appendChild(remove);
+      card.appendChild(foot);
+      card.appendChild(cardStatus);
+      installedList.appendChild(card);
+    }
+  };
+
+  const renderMarketplace = (items) => {
+    marketplaceList.replaceChildren();
+    if (!items.length) {
+      renderEmpty(marketplaceList, '没有找到匹配的插件。可以换一个关键词，或清空搜索查看完整目录。');
+      return;
+    }
+    for (const item of items) {
+      const card = el('article', 'dshd-plugin-card');
+      const header = el('div', 'dshd-plugin-card-head');
+      header.appendChild(el('strong', 'dshd-plugin-card-name', item.name));
+      if (item.version) header.appendChild(el('span', 'dshd-plugin-card-version', item.version));
+      card.appendChild(header);
+      card.appendChild(el('div', 'dshd-plugin-card-description', item.description || item.id));
+      const meta = el('div', 'dshd-plugin-card-meta');
+      if (item.category) meta.appendChild(el('span', '', item.category));
+      if (item.stars) meta.appendChild(el('span', '', `★ ${item.stars}`));
+      if (item.downloads) meta.appendChild(el('span', '', `下载 ${item.downloads}`));
+      if (item.source) meta.appendChild(el('span', 'dsh-plugin-card-source', item.source === 'npm' ? 'npm tarball' : 'GitHub source'));
+      if (meta.childNodes.length) card.appendChild(meta);
+      if (item.repositoryUrl) {
+        const link = el('a', 'dsh-plugin-card-link', '查看仓库');
+        link.href = item.repositoryUrl;
+        link.target = '_blank';
+        link.rel = 'noreferrer';
+        card.appendChild(link);
+      }
+      const foot = el('div', 'dshd-plugin-card-foot');
+      foot.appendChild(el('span', 'dshd-plugin-compat compatible', item.curated ? 'curated 来源' : '来源待核实'));
+      const existing = installedByName.get(item.installSpec) || installedByName.get(item.name);
+      const install = el('button', 'dshd-btn', existing ? '已安装' : '安装');
+      install.disabled = Boolean(existing);
+      const cardStatus = el('div', 'dshd-plugin-card-status');
+      install.addEventListener('click', async () => {
+        install.disabled = true;
+        install.textContent = '安装中…';
+        setStatus(`正在安装 ${item.name}，请勿关闭桌面端。`);
+        setCardStatus(card, cardStatus, 'working', `正在从 ${item.source === 'npm' ? 'npm' : 'GitHub'} 获取插件并备份 web profile…`);
+        const response = await ipcRenderer.invoke('plugins:install', item.installSpec);
+        if (!response || !response.ok) {
+          const message = (response && response.message) || '安装失败，请稍后重试。';
+          setStatus('安装未完成，请查看对应插件的提示。', true);
+          setCardStatus(card, cardStatus, 'error', message);
+          install.disabled = false;
+          install.textContent = '重试安装';
+          return;
+        }
+        install.textContent = '已安装';
+        setStatus(`已安装 ${item.name}。需要重启桌面端。`);
+        setCardStatus(card, cardStatus, 'success', '安装完成。重启桌面端后会加载这个插件。');
+        showRestart();
+        await loadInstalled(true);
+      });
+      foot.appendChild(install);
+      card.appendChild(foot);
+      card.appendChild(cardStatus);
+      marketplaceList.appendChild(card);
+    }
+  };
+
+  async function loadInstalled(preserveStatus = false) {
+    const response = await ipcRenderer.invoke('plugins:list');
+    if (!response || !response.ok) {
+      installedCount.textContent = '读取失败';
+      renderEmpty(installedList, '无法读取已安装插件。');
+      setStatus((response && response.message) || '无法读取已安装插件', true);
+      return;
+    }
+    renderInstalled(response.items || []);
+    installedByName = new Map((response.items || []).flatMap((item) => [
+      [item.name, item],
+      [item.requested, item]
+    ].filter(([name]) => Boolean(name))));
+    if (!preserveStatus) setStatus('插件目录已读取。安装和卸载完成后请重启桌面端。');
+    return response.items || [];
+  }
+
+  async function searchMarketplace() {
+    searchButton.disabled = true;
+    setStatus('正在读取 dsh-market curated 插件目录…');
+    renderEmpty(marketplaceList, '正在搜索…');
+    const response = await ipcRenderer.invoke('plugins:search', search.value);
+    searchButton.disabled = false;
+    if (!response || !response.ok) {
+      renderEmpty(marketplaceList, '仓库索引读取失败。');
+      setStatus((response && response.message) || '仓库索引读取失败', true);
+      return;
+    }
+    renderMarketplace(response.items || []);
+    setStatus(`搜索完成，找到 ${(response.items || []).length} 个插件。`);
+  }
+
+  searchButton.addEventListener('click', searchMarketplace);
+  search.addEventListener('keydown', (event) => { if (event.key === 'Enter') searchMarketplace(); });
+  loadInstalled().catch((error) => setStatus(error && error.message ? error.message : '无法读取已安装插件', true));
+
+  return row;
+}
+
 // ---------- injection ----------
 
 function injectRow(rowId, builder) {
@@ -521,3 +885,409 @@ if (document.readyState === 'loading') {
 } else {
   boot();
 }
+
+// ---------- split workbench: embedded browser ----------
+
+const TOOLS_LAUNCHER_ID = 'dshd-tools-launcher';
+const TOOLS_SHELL_ID = 'dshd-tools-shell';
+const TOOLS_RATIO = 0.44;
+const TOOLS_MIN_WIDTH = 420;
+const TOOLS_MAX_WIDTH = 1100;
+const TOOLS_KEEP_CHAT_WIDTH = 320;
+const TOOLS_RESIZE_RAIL_WIDTH = 10;
+const DEFAULT_BROWSER_URL = 'https://api-docs.deepseek.com/zh-cn/guides/vision/';
+
+const TOOLS_CSS = `
+#${TOOLS_LAUNCHER_ID} {
+  position: fixed;
+  z-index: 2147483640;
+  right: 12px;
+  bottom: 48px;
+  display: flex;
+  padding: 3px;
+  border: 1px solid rgba(215, 219, 227, .94);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 4px 14px rgba(29, 36, 53, .18);
+}
+#${TOOLS_LAUNCHER_ID} { flex-direction: column; gap: 2px; }
+#${TOOLS_LAUNCHER_ID}[hidden], #${TOOLS_SHELL_ID}[hidden] { display: none !important; }
+#${TOOLS_LAUNCHER_ID} button,
+#${TOOLS_SHELL_ID} button,
+#${TOOLS_SHELL_ID} input { font: inherit; letter-spacing: 0; }
+#${TOOLS_LAUNCHER_ID} button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: #4b5363;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+#${TOOLS_LAUNCHER_ID} button:hover { background: #edf0ff; color: #4d6bfe; }
+#${TOOLS_SHELL_ID} {
+  position: fixed;
+  z-index: 2147483641;
+  inset: 0 0 0 auto;
+  width: 44vw;
+  display: grid;
+  grid-template-rows: 48px 48px minmax(0, 1fr);
+  overflow: hidden;
+  color: #181b22;
+  background: #fff;
+  border-left: 1px solid #dfe3e9;
+  box-shadow: -12px 0 32px rgba(29, 36, 53, .12);
+}
+.dshd-tool-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 11px 0 16px;
+  border-bottom: 1px solid #dfe3e9;
+}
+.dshd-tool-head strong { font-size: 14px; white-space: nowrap; }
+.dshd-tool-expand { width: 30px; height: 30px; border: 1px solid #dfe3e9; border-radius: 4px; color: #596172; background: #fff; cursor: pointer; font-size: 16px; }
+.dshd-tool-expand:hover { color: #4d6bfe; background: #edf0ff; border-color: #bdc6ff; }
+.dshd-browser-resize-rail {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 96px;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  background: transparent;
+}
+.dshd-browser-resize-rail::after {
+  content: '';
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background .15s ease;
+}
+.dshd-browser-resize-rail:hover::after,
+.dshd-browser-resize-rail.dragging::after { background: #bdc6ff; }
+.dshd-tool-meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #6e7686;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dshd-tool-switch { display: flex; gap: 3px; margin-left: auto; }
+.dshd-tool-switch button {
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #596172;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+}
+.dshd-tool-switch button.active { color: #4d6bfe; background: #edf0ff; border-color: #bdc6ff; font-weight: 700; }
+.dshd-tool-close { width: 30px; height: 30px; margin-left: 2px; border: 0; color: #687083; background: transparent; cursor: pointer; font-size: 20px; }
+.dshd-browser-state { min-width: 0; }
+.dshd-browser-state.loading::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #4d6bfe; box-shadow: 0 0 0 3px #edf0ff; vertical-align: 1px; }
+.dshd-browser-state.error { color: #b42318; }
+.dshd-browser-chrome {
+  display: grid;
+  grid-template-columns: 34px 34px 34px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  background: #fafbfc;
+  border-bottom: 1px solid #dfe3e9;
+}
+.dshd-browser-chrome button { height: 34px; min-width: 34px; border: 1px solid #dfe3e9; border-radius: 4px; color: #4e5665; background: #fff; cursor: pointer; font-size: 17px; }
+.dshd-browser-chrome button:last-child { padding: 0 12px; color: #fff; background: #4d6bfe; border-color: #4d6bfe; font-size: 12px; font-weight: 650; }
+.dshd-browser-chrome button:disabled { opacity: .38; cursor: default; }
+.dshd-browser-url { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid #d7dbe3; border-radius: 4px; color: #404755; background: #fff; font-size: 12px; }
+a[data-dsh-browser-link] { cursor: pointer; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: 3px; }
+`;
+
+let toolsShell = null;
+let toolsLauncher = null;
+let toolMode = 'closed';
+let browserUrl = DEFAULT_BROWSER_URL;
+let browserState = { open: false };
+let openBrowserPanel = null;
+let openPluginCenter = null;
+let closeBrowserPanel = null;
+let browserPanelWidth = 0;
+
+function browserWidthLimits() {
+  const max = Math.min(TOOLS_MAX_WIDTH, Math.max(TOOLS_MIN_WIDTH, Math.floor(window.innerWidth * 0.78)));
+  const min = Math.min(TOOLS_MIN_WIDTH, Math.max(300, window.innerWidth - TOOLS_KEEP_CHAT_WIDTH));
+  return { min, max: Math.max(min, max) };
+}
+
+function clampBrowserWidth(value) {
+  const limits = browserWidthLimits();
+  return Math.round(Math.max(limits.min, Math.min(limits.max, Number(value) || 0)));
+}
+
+function bootPluginCenter() {
+  if (document.getElementById('dshd-plugin-center')) return;
+  const panel = el('aside', '');
+  panel.id = 'dshd-plugin-center';
+  panel.hidden = true;
+  const head = el('header', 'dshd-plugin-center-head');
+  head.appendChild(el('strong', '', '插件中心'));
+  head.appendChild(el('span', '', 'curated registry · npm 优先'));
+  const close = toolButton('×', 'dshd-plugin-center-close', '关闭插件中心');
+  head.appendChild(close);
+  const row = buildPluginSettingsRow();
+  row.removeAttribute('data-slot');
+  row.classList.add('dshd-plugin-standalone');
+  panel.appendChild(head);
+  panel.appendChild(row);
+  document.body.appendChild(panel);
+  const closePanel = () => {
+    panel.hidden = true;
+    if (toolsLauncher) toolsLauncher.hidden = false;
+  };
+  close.addEventListener('click', closePanel);
+  openPluginCenter = () => {
+    if (closeBrowserPanel) closeBrowserPanel();
+    panel.hidden = false;
+    if (toolsLauncher) toolsLauncher.hidden = false;
+  };
+}
+
+function setToolsLayout() {
+  if (!browserPanelWidth) {
+    const saved = Number(localStorage.getItem('dsh-desktop-browser-width'));
+    browserPanelWidth = clampBrowserWidth(saved || Math.round(window.innerWidth * TOOLS_RATIO));
+  }
+  browserPanelWidth = clampBrowserWidth(browserPanelWidth);
+  if (toolsShell) toolsShell.style.width = `${browserPanelWidth}px`;
+  const panelLeft = Math.max(0, window.innerWidth - browserPanelWidth);
+  ipcRenderer.invoke('browser:layout', {
+    left: panelLeft + TOOLS_RESIZE_RAIL_WIDTH,
+    top: 96,
+    width: Math.max(1, browserPanelWidth - TOOLS_RESIZE_RAIL_WIDTH)
+  }).catch(() => {});
+}
+
+function toolButton(label, className, title) {
+  const button = el('button', className, label);
+  if (title) button.title = title;
+  return button;
+}
+
+function makeToolShell() {
+  const launcher = el('div', '');
+  launcher.id = TOOLS_LAUNCHER_ID;
+  const launchBrowser = toolButton('◫', '', '显示/隐藏侧边面板（Ctrl+Alt+B）');
+  launchBrowser.setAttribute('aria-label', '显示/隐藏侧边面板');
+  launcher.appendChild(launchBrowser);
+  const launchPlugins = toolButton('🧩', '', '打开插件中心');
+  launchPlugins.setAttribute('aria-label', '打开插件中心');
+  launcher.appendChild(launchPlugins);
+
+  const shell = el('aside', '');
+  shell.id = TOOLS_SHELL_ID;
+  shell.hidden = true;
+  const head = el('header', 'dshd-tool-head');
+  const title = el('strong', '', '浏览器');
+  const meta = el('span', 'dshd-tool-meta dshd-browser-state', '准备就绪');
+  const expand = toolButton('⇱', 'dshd-tool-expand', '展开 / 恢复浏览器宽度');
+  const close = toolButton('×', 'dshd-tool-close', '关闭内置浏览器');
+  head.appendChild(title);
+  head.appendChild(meta);
+  head.appendChild(expand);
+  head.appendChild(close);
+
+  const chrome = el('div', 'dshd-browser-chrome');
+  const resizeRail = el('div', 'dshd-browser-resize-rail');
+  resizeRail.setAttribute('aria-label', '拖动调整浏览器宽度');
+  const back = toolButton('‹', '', '后退');
+  const forward = toolButton('›', '', '前进');
+  const reload = toolButton('↻', '', '刷新');
+  const address = el('input', 'dshd-browser-url');
+  address.type = 'text';
+  address.value = browserUrl;
+  address.setAttribute('aria-label', '网址');
+  const open = toolButton('打开', '');
+  chrome.appendChild(back);
+  chrome.appendChild(forward);
+  chrome.appendChild(reload);
+  chrome.appendChild(address);
+  chrome.appendChild(open);
+
+  shell.appendChild(head);
+  shell.appendChild(chrome);
+  shell.appendChild(resizeRail);
+  document.body.appendChild(launcher);
+  document.body.appendChild(shell);
+  toolsLauncher = launcher;
+  toolsShell = shell;
+
+  const updateBrowserState = (nextState) => {
+    browserState = nextState || { open: false };
+    if (browserState.url && /^https?:/i.test(browserState.url)) {
+      browserUrl = browserState.url;
+      address.value = browserUrl;
+    }
+    back.disabled = !browserState.canGoBack;
+    forward.disabled = !browserState.canGoForward;
+    const loading = Boolean(browserState.loading);
+    meta.classList.toggle('loading', loading);
+    meta.classList.toggle('error', Boolean(browserState.error));
+    meta.textContent = browserState.error || (loading ? '正在加载…' : (browserState.title || '隔离网页内容'));
+    meta.title = browserState.url || '';
+  };
+
+  const setMode = async (mode, nextUrl) => {
+    if (mode !== 'browser') return;
+    toolMode = 'browser';
+    if (nextUrl) browserUrl = nextUrl;
+    address.value = browserUrl;
+    shell.hidden = false;
+    launcher.hidden = true;
+    setToolsLayout();
+    const result = await ipcRenderer.invoke('browser:open', browserUrl);
+    setToolsLayout();
+    if (!result || !result.ok) {
+      meta.classList.remove('loading');
+      meta.textContent = (result && result.message) || '浏览器打开失败';
+      return result;
+    }
+    updateBrowserState(result);
+    return result;
+  };
+
+  openBrowserPanel = (nextUrl) => {
+    const pluginPanel = document.getElementById('dshd-plugin-center');
+    if (pluginPanel) pluginPanel.hidden = true;
+    return setMode('browser', nextUrl);
+  };
+
+  const closeTools = async () => {
+    toolMode = 'closed';
+    shell.hidden = true;
+    launcher.hidden = false;
+    await ipcRenderer.invoke('browser:hide').catch(() => {});
+  };
+  closeBrowserPanel = closeTools;
+  let dragStartX = 0;
+  let dragStartWidth = 0;
+  const finishResize = () => {
+    if (!resizeRail.classList.contains('dragging')) return;
+    resizeRail.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    localStorage.setItem('dsh-desktop-browser-width', String(browserPanelWidth));
+  };
+  resizeRail.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    dragStartX = event.clientX;
+    dragStartWidth = browserPanelWidth || clampBrowserWidth(Math.round(window.innerWidth * TOOLS_RATIO));
+    resizeRail.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    resizeRail.setPointerCapture?.(event.pointerId);
+  });
+  resizeRail.addEventListener('pointermove', (event) => {
+    if (!resizeRail.classList.contains('dragging')) return;
+    browserPanelWidth = clampBrowserWidth(dragStartWidth - (event.clientX - dragStartX));
+    setToolsLayout();
+  });
+  resizeRail.addEventListener('pointerup', finishResize);
+  resizeRail.addEventListener('pointercancel', finishResize);
+  expand.addEventListener('click', () => {
+    const limits = browserWidthLimits();
+    const normal = clampBrowserWidth(Math.round(window.innerWidth * TOOLS_RATIO));
+    browserPanelWidth = browserPanelWidth < limits.max - 20 ? limits.max : normal;
+    localStorage.setItem('dsh-desktop-browser-width', String(browserPanelWidth));
+    setToolsLayout();
+  });
+  launchPlugins.addEventListener('click', () => { if (openPluginCenter) openPluginCenter(); });
+
+  const navigate = () => setMode('browser', address.value.trim() || DEFAULT_BROWSER_URL);
+
+  launchBrowser.addEventListener('click', () => {
+    if (toolMode === 'browser' && !shell.hidden) closeTools();
+    else openBrowserPanel(browserUrl);
+  });
+  close.addEventListener('click', closeTools);
+  open.addEventListener('click', navigate);
+  address.addEventListener('keydown', (event) => { if (event.key === 'Enter') navigate(); });
+  back.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:back')));
+  forward.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:forward')));
+  reload.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:reload')));
+  window.addEventListener('resize', setToolsLayout);
+  ipcRenderer.on('browser:state', (_event, nextState) => updateBrowserState(nextState));
+  ipcRenderer.on('browser:request-open', (_event, url) => {
+    if (/^https?:\/\//i.test(String(url || ''))) openBrowserPanel(url).catch(() => {});
+  });
+  window.addEventListener('keydown', (event) => {
+    if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'b') {
+      event.preventDefault();
+      if (toolMode === 'browser' && !shell.hidden) closeTools();
+      else openBrowserPanel(browserUrl);
+    }
+  });
+  setToolsLayout();
+}
+
+function bootTools() {
+  if (document.getElementById(TOOLS_SHELL_ID)) return;
+  const style = document.createElement('style');
+  style.id = 'dshd-tools-css';
+  style.textContent = TOOLS_CSS;
+  (document.head || document.documentElement).appendChild(style);
+  makeToolShell();
+  bootPluginCenter();
+
+  const markExternalLinks = (root = document) => {
+    const anchors = [];
+    if (root && root.matches && root.matches('a[href]')) anchors.push(root);
+    if (root && root.querySelectorAll) anchors.push(...root.querySelectorAll('a[href]'));
+    for (const anchor of anchors) {
+      if (anchor.closest(`#${TOOLS_LAUNCHER_ID}, #${TOOLS_SHELL_ID}, [data-dsh-plugin-settings], #${ROW_ID}, #${UPDATE_ROW_ID}`)) continue;
+      try {
+        const url = new URL(anchor.href, window.location.href);
+        if (['http:', 'https:'].includes(url.protocol) && url.origin !== window.location.origin) {
+          anchor.setAttribute('data-dsh-browser-link', '');
+          if (!anchor.title) anchor.title = '在内置浏览器中打开';
+        }
+      } catch { /* ignore malformed links */ }
+    }
+  };
+  markExternalLinks();
+  new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) {
+      if (node.nodeType === Node.ELEMENT_NODE) markExternalLinks(node);
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+
+  // External links in chat stay inside the desktop workspace. Settings and
+  // the browser chrome keep their normal link behaviour.
+  document.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+    if (!anchor || !document.documentElement.contains(anchor)) return;
+    if (anchor.closest(`#${TOOLS_LAUNCHER_ID}, #${TOOLS_SHELL_ID}, [data-dsh-plugin-settings], #${ROW_ID}, #${UPDATE_ROW_ID}`)) return;
+    let url;
+    try { url = new URL(anchor.href, window.location.href); } catch { return; }
+    if (!['http:', 'https:'].includes(url.protocol) || url.origin === window.location.origin) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (openBrowserPanel) openBrowserPanel(url.href).catch(() => {});
+  }, true);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootTools, { once: true });
+else bootTools();

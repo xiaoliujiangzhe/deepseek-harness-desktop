@@ -1,52 +1,61 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeepSeek Harness</title>
-  <link rel="stylesheet" href="loading.css" />
+  <link rel="stylesheet" href="loading.css">
 </head>
 <body>
-  <div class="card">
-    <div class="brand">
-      <svg class="logo" viewBox="27 77 206 103" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <defs>
-          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#4d7cfe" />
-            <stop offset="55%" stop-color="#3b82f6" />
-            <stop offset="100%" stop-color="#22d3ee" />
-          </linearGradient>
-        </defs>
-        <path fill="url(#g)" fill-rule="evenodd" d="M32.3 132.6 L32.5 130.3 L33.1 128.0 L33.8 125.7 L34.8 123.3 L36.1 120.9 L37.6 118.5 L39.3 116.1 L41.2 113.7 L43.3 111.5 L45.5 109.3 L47.9 107.2 L50.5 105.2 L53.3 103.3 L56.4 101.4 L59.7 99.5 L63.2 97.6 L66.9 95.8 L70.8 94.1 L74.8 92.5 L78.9 91.0 L83.1 89.7 L87.4 88.6 L91.7 87.7 L96.1 87.0 L100.6 86.5 L105.4 86.2 L110.5 86.1 L115.7 86.1 L121.0 86.3 L126.3 86.7 L131.6 87.2 L136.8 87.8 L141.8 88.6 L146.6 89.5 L151.2 90.5 L155.3 91.5 L159.2 93.0 L162.7 94.9 L166.1 97.2 L169.2 99.8 L172.1 102.5 L175.0 105.2 L177.8 107.8 L180.5 110.1 L183.2 112.1 L186.0 113.5 L188.8 114.3 L191.8 114.3 L195.0 113.3 L198.6 111.3 L202.4 108.3 L206.2 104.8 L210.1 100.9 L213.9 96.8 L217.4 92.8 L220.7 89.2 L223.5 86.1 L225.7 83.8 L227.4 82.5 L228.2 82.4 L228.2 83.6 L227.2 85.8 L225.3 88.9 L222.9 92.6 L220.1 96.9 L217.0 101.7 L213.8 106.6 L210.8 111.7 L208.0 116.8 L205.7 121.6 L204.0 126.2 L203.2 130.3 L203.2 134.3 L204.1 138.6 L205.5 143.1 L207.4 147.7 L209.6 152.3 L211.9 156.8 L214.1 160.9 L216.2 164.7 L217.9 168.0 L219.0 170.6 L219.5 172.5 L219.1 173.6 L218.0 173.5 L216.3 172.2 L214.0 169.9 L211.4 166.9 L208.4 163.4 L205.0 159.6 L201.5 155.8 L197.8 152.1 L194.0 148.9 L190.2 146.3 L186.4 144.6 L182.7 143.9 L179.0 144.5 L175.1 145.9 L171.1 148.0 L167.0 150.7 L162.8 153.8 L158.5 157.2 L154.1 160.6 L149.8 164.0 L145.4 167.2 L141.1 169.9 L136.8 172.1 L132.6 173.6 L128.3 174.4 L124.0 174.9 L119.7 175.0 L115.3 174.8 L110.9 174.4 L106.5 173.9 L102.2 173.1 L98.0 172.3 L93.8 171.4 L89.9 170.6 L86.1 169.7 L82.4 169.0 L79.0 168.3 L75.6 167.7 L72.3 167.0 L69.2 166.2 L66.1 165.4 L63.2 164.6 L60.4 163.7 L57.7 162.7 L55.1 161.6 L52.7 160.4 L50.4 159.1 L48.3 157.6 L46.2 156.0 L44.1 154.3 L42.2 152.4 L40.3 150.4 L38.6 148.3 L37.0 146.1 L35.6 143.9 L34.4 141.6 L33.5 139.3 L32.8 137.0 L32.4 134.8 Z M67.9 121.2 a7.7 7.7 0 1 0 15.4 0 a7.7 7.7 0 1 0 -15.4 0 Z" />
-      </svg>
-      <div class="brand-text">
-        <div class="title">DeepSeek Harness</div>
-        <div class="subtitle">Desktop</div>
-      </div>
-    </div>
+  <main class="stage" id="stage">
+    <div class="content">
+      <header>
+        <div class="brand">
+          <img class="logo" src="../assets/whale.svg" alt="">
+          <div>
+            <h1>DeepSeek Harness</h1>
+            <div class="brand-sub">Desktop / local runtime</div>
+          </div>
+        </div>
+        <div class="sequence"><span>BOOT</span><strong id="bootStep">01 / 06</strong></div>
+      </header>
 
-    <div class="status" id="status">正在准备…</div>
+      <section class="startup" id="startup">
+        <div class="mascot" id="mascot" aria-label="鲸鱼娘正在偷吃你的白饭">
+          <div class="mascot-glow" aria-hidden="true"></div>
+          <span class="token token-a" aria-hidden="true">◆</span>
+          <span class="token token-b" aria-hidden="true">✦</span>
+          <span class="token token-c" aria-hidden="true">◆</span>
+          <img class="mascot-art" src="../assets/whale-girl-token-rice.png" alt="">
+          <span class="rice-note" aria-hidden="true">TOKEN RICE</span>
+        </div>
+        <div class="startup-copy">
+          <div class="step" id="barLabel">ENVIRONMENT</div>
+          <div class="status" id="status">鲸鱼娘正在偷吃你的白饭</div>
+          <div class="detail" id="detail">检查 Harness 与工作目录</div>
+          <div class="ticks" id="ticks" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="bar-track" aria-hidden="true"><div class="bar-fill" id="barFill"></div></div>
+        </div>
+        <div class="pct"><span id="barPct">0%</span><small>READY</small></div>
+      </section>
 
-    <div class="bar-track">
-      <div class="bar-fill" id="barFill">
-        <span class="shimmer"></span>
-      </div>
-    </div>
-    <div class="bar-row">
-      <span class="bar-label" id="barLabel">启动本地服务</span>
-      <span class="bar-pct" id="barPct">0%</span>
-    </div>
+      <section class="error" id="error" hidden>
+        <div class="error-head"><span>BOOT FAILED</span><strong id="errorTitle">启动失败</strong></div>
+        <pre class="error-detail" id="errorDetail"></pre>
+        <div class="error-actions">
+          <button class="btn btn-secondary" id="btnWorkspace">选择工作目录</button>
+          <button class="btn" id="btnRetry">重试</button>
+        </div>
+      </section>
 
-    <div class="error" id="error" hidden>
-      <div class="error-title" id="errorTitle">启动失败</div>
-      <pre class="error-detail" id="errorDetail"></pre>
-      <div class="error-actions">
-        <button class="btn" id="btnWorkspace">选择工作目录</button>
-        <button class="btn btn-ghost" id="btnRetry">重试</button>
-      </div>
+      <footer>
+        <span class="note">UNOFFICIAL COMMUNITY DESKTOP</span>
+        <span class="stamp">XLJZ / BUILD</span>
+      </footer>
     </div>
-  </div>
-
+  </main>
   <script src="loading.js"></script>
 </body>
 </html>

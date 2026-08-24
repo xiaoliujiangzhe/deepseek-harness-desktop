@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>方向 B · Blue Depth</title>
+  <!-- Assumption: a bold brand-first composition without generic neon effects. -->
+  <style>
+    :root { --blue:#4d6bfe; --ink:#10131c; --white:#fff; }
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; }
+    body { display:grid; place-items:center; background:#cbd1df; font-family:"Segoe UI Variable","Segoe UI","Microsoft YaHei",sans-serif; }
+    .stage { width:480px; height:340px; position:relative; overflow:hidden; border-radius:14px; background:var(--blue); color:#fff; box-shadow:0 22px 55px rgba(22,31,55,.25); }
+    .whale { position:absolute; width:285px; height:285px; right:-64px; top:-57px; opacity:.13; filter:brightness(0) invert(1); }
+    .rail { position:absolute; inset:0 auto 0 0; width:82px; background:var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:24px 0 22px; }
+    .rail img { width:42px; height:42px; filter:brightness(0) invert(1); }
+    .rail .index { writing-mode:vertical-rl; transform:rotate(180deg); color:#8e96a9; font:600 10px/1 "Cascadia Mono",Consolas,monospace; letter-spacing:.18em; }
+    .rail .dot { width:7px; height:7px; border-radius:50%; background:var(--blue); box-shadow:0 0 0 5px rgba(77,107,254,.16); }
+    .content { position:absolute; inset:0 0 0 82px; padding:30px 30px 24px; display:grid; grid-template-rows:auto 1fr auto; }
+    .label { font:650 11px/1 "Cascadia Mono",Consolas,monospace; letter-spacing:.12em; text-transform:uppercase; opacity:.74; }
+    h1 { margin:8px 0 0; font-size:24px; line-height:1.08; font-weight:650; letter-spacing:0; }
+    .main { align-self:end; margin-bottom:27px; }
+    .status { font-size:15px; font-weight:550; }
+    .line { margin-top:16px; display:grid; grid-template-columns:64fr 36fr; gap:0; height:3px; }
+    .line span:first-child { background:#fff; }
+    .line span:last-child { background:rgba(255,255,255,.25); }
+    .meta { margin-top:10px; display:flex; justify-content:space-between; font-size:12px; color:rgba(255,255,255,.76); }
+    .meta strong { color:#fff; font:700 12px/1 "Cascadia Mono",Consolas,monospace; }
+    footer { display:flex; justify-content:space-between; align-items:end; }
+    footer small { color:rgba(255,255,255,.68); font-size:10px; line-height:1.35; text-transform:uppercase; }
+    .signature { font:700 24px/1 "Segoe Script","Segoe UI",cursive; transform:rotate(-6deg); text-shadow:0 1px 0 rgba(0,0,0,.12); }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <img class="whale" src="../vendor/deepseek-harness/website/public/favicon.svg" alt="">
+    <aside class="rail">
+      <img src="../vendor/deepseek-harness/website/public/favicon.svg" alt="DeepSeek 鲸鱼标识">
+      <span class="index">HARNESS / LOCAL / 01</span>
+      <span class="dot"></span>
+    </aside>
+    <div class="content">
+      <header><div class="label">DeepSeek</div><h1>Harness<br>Desktop</h1></header>
+      <section class="main">
+        <div class="status">正在启动本地服务</div>
+        <div class="line"><span></span><span></span></div>
+        <div class="meta"><span>正在确认 HTTP 可访问</span><strong>64%</strong></div>
+      </section>
+      <footer><small>Unofficial<br>community build</small><span class="signature">XLJZ</span></footer>
+    </div>
+  </main>
+</body>
+</html>
+

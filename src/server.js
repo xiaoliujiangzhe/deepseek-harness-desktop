@@ -20,13 +20,26 @@ const POLL_INTERVAL_MS = 250;
 const POLL_MAX_ATTEMPTS = 240; // ~60s worst case after the URL line is seen
 const STDOUT_TAIL_LINES = 60;
 
-/** Resolve the system Node executable, or null when only Electron's is available. */
-function resolveNodeExecutable() {
+/** Resolve the dedicated Node executable, or null when only Electron's is available. */
+function resolveNodeExecutable(options = {}) {
+  const resourcesPath = options.resourcesPath === undefined ? process.resourcesPath : options.resourcesPath;
+  const appRoot = options.appRoot || path.join(__dirname, '..');
+
   // 1. Explicit override (settings / environment).
   const override = process.env.DSH_DESKTOP_NODE;
   if (override && fs.existsSync(override)) return override;
 
-  // 2. PATH lookup.
+  // 2. Portable runtime shipped as an electron-builder extraResource. Keep a
+  // development candidate too, so the exact same selection path is testable.
+  const portableCandidates = [
+    resourcesPath && path.join(resourcesPath, 'runtime', 'node', process.platform === 'win32' ? 'node.exe' : 'node'),
+    path.join(appRoot, 'runtime', 'node', process.platform === 'win32' ? 'node.exe' : 'node')
+  ];
+  for (const candidate of portableCandidates) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+
+  // 3. PATH lookup.
   try {
     const lookup = process.platform === 'win32'
       ? execFileSync('where.exe', ['node'], { encoding: 'utf8' })
@@ -37,7 +50,7 @@ function resolveNodeExecutable() {
     /* fall through */
   }
 
-  // 3. Common install locations.
+  // 4. Common install locations.
   if (process.platform === 'win32') {
     const candidates = [
       path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs', 'node.exe'),

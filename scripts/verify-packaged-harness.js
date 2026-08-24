@@ -18,8 +18,21 @@ const dshBin = path.join(
   'lib',
   'bin.js'
 );
+const portableNode = path.join(resources, 'runtime', 'node', process.platform === 'win32' ? 'node.exe' : 'node');
+const portableManifest = path.join(resources, 'runtime', 'node', 'runtime.json');
 
 assert.ok(fs.existsSync(dshBin), `打包后的 DSH CLI 不存在：${dshBin}`);
+assert.ok(fs.existsSync(portableNode), `打包后的便携 Node 不存在：${portableNode}`);
+assert.ok(fs.existsSync(portableManifest), `打包后的便携 Node 清单不存在：${portableManifest}`);
+
+const runtimeInfo = JSON.parse(fs.readFileSync(portableManifest, 'utf8'));
+const portableVersion = execFileSync(portableNode, ['--version'], {
+  cwd: unpackedRoot,
+  encoding: 'utf8',
+  windowsHide: true,
+  timeout: 10_000
+}).trim();
+assert.equal(portableVersion, runtimeInfo.version, `打包后的便携 Node 版本不一致：清单 ${runtimeInfo.version}，实际 ${portableVersion}`);
 
 let actualVersion;
 try {
@@ -46,3 +59,4 @@ assert.equal(
 );
 
 console.log(`打包产物校验通过：Harness ${actualVersion}`);
+console.log(`打包产物校验通过：便携 Node ${portableVersion}`);

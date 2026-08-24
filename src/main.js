@@ -1,12 +1,14 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, shell, dialog, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, shell, dialog, Tray, Menu, nativeImage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { startService, resolveDshVersion } = require('./server');
 const { checkLatest } = require('./update');
 const { migrateHarnessHome } = require('./harness-migration');
+const { EmbeddedBrowser } = require('./embedded-browser');
+const { listInstalled, runPluginCommand, searchMarketplace } = require('./plugin-manager');
 
 const APP_NAME = 'DeepSeek Harness';
 const LOADING_WINDOW_SIZE = { width: 480, height: 340 };
@@ -19,6 +21,8 @@ let service = null;
 let quitting = false;
 let cleanedUp = false;
 let currentWorkspace = null;
+let embeddedBrowser = null;
+let pluginOperation = null;
 
 // Required on Windows for correct tray-icon / taskbar grouping.
 app.setAppUserModelId('com.dsh.desktop');
@@ -172,13 +176,19 @@ function createMainWindow(url) {
     }
   });
 
-  // The dsh web UI opens links/new windows; keep them inside the shell when they
-  // are same-origin, and hand external ones to the system browser.
+  const requestEmbeddedBrowser = (targetUrl) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('browser:request-open', targetUrl);
+    }
+  };
+
+  // Same-origin routes stay in Harness. External pages are opened by the
+  // isolated WebContentsView after the preload reveals its browser panel.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http://127.0.0.1') || url.startsWith('http://localhost')) {
       return { action: 'allow' };
     }
-    shell.openExternal(url);
+    requestEmbeddedBrowser(url);
     return { action: 'deny' };
   });
 
@@ -187,7 +197,7 @@ function createMainWindow(url) {
     try {
       if (new URL(targetUrl).origin !== new URL(current).origin) {
         event.preventDefault();
-        shell.openExternal(targetUrl);
+        requestEmbeddedBrowser(targetUrl);
       }
     } catch {
       /* ignore malformed URLs */
@@ -216,7 +226,18 @@ function createMainWindow(url) {
   });
 
   mainWindow.on('closed', () => {
+    if (embeddedBrowser) embeddedBrowser.destroy();
+    embeddedBrowser = null;
     mainWindow = null;
+  });
+
+  embeddedBrowser = new EmbeddedBrowser({
+    WebContentsView,
+    dialog,
+    hostWindow: mainWindow,
+    onState: (state) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('browser:state', state);
+    }
   });
 
   mainWindow.loadURL(url);
@@ -351,6 +372,49 @@ ipcMain.handle('update:check', async () => {
     return { ok: false, message: error && error.message ? error.message : String(error) };
   }
 });
+
+// --- IPC for desktop plugin management ---
+ipcMain.handle('plugins:list', () => ({ ok: true, items: listInstalled() }));
+ipcMain.handle('plugins:search', async (_event, query) => {
+  try { return { ok: true, items: await searchMarketplace(query) }; }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+
+async function mutatePlugin(action, spec) {
+  if (pluginOperation) return { ok: false, message: '另一个插件操作正在进行' };
+  pluginOperation = runPluginCommand(action, String(spec || ''));
+  try { return { ok: true, ...(await pluginOperation) }; }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+  finally { pluginOperation = null; }
+}
+
+ipcMain.handle('plugins:install', (_event, spec) => mutatePlugin('add', spec));
+ipcMain.handle('plugins:remove', (_event, name) => mutatePlugin('remove', name));
+ipcMain.handle('desktop:restart', () => {
+  app.relaunch();
+  app.quit();
+  return true;
+});
+
+// --- IPC for the isolated embedded browser ---
+ipcMain.handle('browser:state', () => embeddedBrowser ? embeddedBrowser.state() : { open: false });
+ipcMain.handle('browser:open', async (_event, url) => {
+  try {
+    if (!embeddedBrowser) throw new Error('桌面浏览器尚未初始化');
+    return { ok: true, ...(await embeddedBrowser.open(url)) };
+  }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('browser:layout', (_event, bounds) => {
+  if (!embeddedBrowser) return { ok: false };
+  embeddedBrowser.layout(bounds || {});
+  return { ok: true };
+});
+ipcMain.handle('browser:back', () => embeddedBrowser ? embeddedBrowser.back() : { open: false });
+ipcMain.handle('browser:forward', () => embeddedBrowser ? embeddedBrowser.forward() : { open: false });
+ipcMain.handle('browser:reload', () => embeddedBrowser ? embeddedBrowser.reload() : { open: false });
+ipcMain.handle('browser:hide', () => embeddedBrowser ? embeddedBrowser.hide() : { open: false });
+ipcMain.handle('browser:close', () => embeddedBrowser ? embeddedBrowser.close() : { open: false });
 
 // --- App lifecycle ---
 

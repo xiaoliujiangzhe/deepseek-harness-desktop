@@ -1,13 +1,13 @@
 # DeepSeek Harness Desktop
 
-DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CLI，发布版固定携带一个经过验证的 Harness 版本，避免 CLI 和 Web 插件混用不同版本。每次打开应用时会**自动启动本地 `dsh web` 服务**，用带**读条特效的启动画面**等待服务就绪，然后在原生窗口里打开浏览器界面。关闭窗口会**最小化到系统托盘**、服务继续常驻，从托盘菜单「退出」时才真正停掉服务。
+DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CLI，发布版固定携带一个经过验证的 Harness 版本，避免 CLI 和 Web 插件混用不同版本。每次打开应用时会**自动启动本地 `dsh web` 服务**，用 C 版工程启动页等待服务就绪，然后在原生窗口里打开 Harness 界面。关闭窗口会**最小化到系统托盘**、服务继续常驻，从托盘菜单「退出」时才真正停掉服务。
 
 ## 工作原理
 
 ```
 启动 App
   └─ 启动画面（读条特效）
-       ├─ 定位系统 Node 运行时（不用 Electron 内置 Node，避免 node-pty/sharp 等原生模块 ABI 不匹配）
+       ├─ 定位内置便携 Node（无内置时回退系统 Node，最后才使用 Electron Node）
        ├─ 解析安装包内的官方 @deepseek-ai/dsh CLI
        ├─ 版本升级时备份旧的生成型插件目录（不动会话、附件、设置和凭据）
        └─ spawn: node <bin.js> web --port 0   （--port 0 让 OS 自动选空闲端口，永不冲突）
@@ -23,6 +23,8 @@ DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CL
 - **共享数据**：不覆盖 `DSH_HOME`，会话/配置与命令行版本共用 `~/.dsh`。
 - **读条特效**：启动画面用真实阶段驱动进度（解析环境 → 启动服务 → 端口绑定 → HTTP 探测 → 就绪），百分比做缓动动画、渐变进度条带流光扫过特效。
 - **系统托盘**：关窗不退出，缩到托盘、服务常驻；单击托盘图标切换显示/隐藏，右键菜单可「显示 / 打开工作目录 / 退出」。单实例：重复双击快捷方式只唤起已有窗口。
+- **C 版分屏工作台**：保留 DSH 对话为主视图，右侧只显示内置浏览器。浏览器使用隔离的 Electron `WebContentsView`，不会自动打开系统浏览器，也不注入 DSH preload；聊天中的外部网页链接会直接在右侧打开。
+- **插件中心**：位于主界面工具栏的独立侧边工作台，不改动 Harness 原生「插件」页；使用 dsh-market 同源的 `awesome-dsh-plugin` curated 目录，支持按名称、分类和关键词搜索，优先从 npm tarball 安装，GitHub 源码包作为目录明确声明的后备来源。安装前备份 web profile，安装过程在对应插件卡片内显示进度和可读错误。
 - **主界面皮肤（外观自定义）**：集成进 Harness 网页自己的「设置 → 通用设置」里，新增一个「桌面外观」区块，可**上传图片当背景**、调背景模糊/变暗、改字体字号、布局密度、强调色，并支持**自定义 CSS**，保存后实时生效。深浅色模式在 Harness 设置里切换。
 - **DeepSeek 原生多模态**：Harness `0.1.1-rc.2` 内置 `deepseek-v4-flash-vision-exp`，可直接向 DeepSeek 官方路由发送图片，不再依赖桌面项目的识图兜底补丁。
 - **可恢复升级**：检测到旧 Harness 插件目录时先改名备份，再由新 CLI 重建；`sessions`、`attachments`、`settings.yaml`、`.credentials.yaml` 和 `cordis.patch.yml` 不参与迁移。
@@ -34,12 +36,15 @@ DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CL
 src/
   main.js        Electron 主进程（窗口、生命周期、单实例、IPC）
   server.js      服务管理器（定位 Node、spawn dsh web、就绪探测）
+  embedded-browser.js  隔离内置浏览器视图（HTTP/HTTPS、下载、权限策略）
+  plugin-manager.js    GitHub 插件索引与官方 DSH plugin 命令适配
   preload.js     启动画面 IPC 桥
   loading.html   启动画面
   loading.css    读条特效样式
   loading.js     进度动画 + 错误处理
 scripts/
-  gen-icon.js    无依赖生成 assets/icon.png
+  render-brand-assets.js  从官方鲸鱼 SVG 生成 PNG / ICO / 托盘图标
+  stage-portable-node.js  构建时固定并校验便携 Node 运行时
 test/             桌面升级迁移等 Node.js 单元测试
 vendor/           仅供维护者对照官方源码（不进入安装包）
 vendor-patches/   已退役的历史识图补丁存档
@@ -47,8 +52,9 @@ vendor-patches/   已退役的历史识图补丁存档
 
 ## 环境要求
 
-- Node.js ≥ 18（本机已验证 v24）
+- Node.js ≥ 18（构建机当前固定使用 v24.18.0；安装包运行不要求用户预装 Node）
 - npm（默认走 `registry.npmmirror.com`，见 `.npmrc`）
+- 插件中心安装第三方插件需要 `pnpm`；没有 pnpm 时浏览和对话仍可正常使用
 
 ## 安装与运行
 
@@ -64,6 +70,7 @@ vendor-patches/   已退役的历史识图补丁存档
 npm install        # 安装 @deepseek-ai/dsh + electron（含 Electron 二进制）
 npm test           # 验证桌面版迁移逻辑
 npm start          # 启动桌面版
+npm run runtime:node # 将构建机 Node v24.18.0 暂存为安装包运行时
 ```
 
 > 沙箱/受限环境下若 npm 缓存目录不可写，可把缓存重定向到项目内：
@@ -81,6 +88,8 @@ npm start          # 启动桌面版
 ```powershell
 npm run dist:win   # electron-builder → release/ 下的 NSIS 安装包
 ```
+
+`dist:win` 会在打包前运行 Harness 校验、便携 Node 暂存和官方鲸鱼图标生成。`runtime/node/node.exe` 被 `.gitignore` 忽略，不应提交到 GitHub；安装包会把它放进 `resources/runtime/node/node.exe`。`runtime/node/runtime.json` 只记录本机构建时的版本和 SHA256，发布前应在干净 Windows x64 环境再验证一次。
 
 ## 配置
 

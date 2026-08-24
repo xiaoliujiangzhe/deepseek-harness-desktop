@@ -1,12 +1,15 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "0.2.1",
-  "description": "DeepSeek Harness desktop shell — auto-starts the local dsh web service and opens the browser UI in a native window.",
+  "version": "0.3.0",
+  "description": "DeepSeek Harness desktop shell with a split embedded browser, guarded plugin center, portable Node runtime, and native startup workspace.",
   "author": "DSH Desktop",
   "license": "MIT",
   "main": "src/main.js",
   "scripts": {
+    "image:whale-girl": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-whale-girl.ps1",
     "verify:harness": "node scripts/verify-harness-version.js",
+    "runtime:node": "node scripts/stage-portable-node.js",
+    "icon:build": "electron scripts/render-brand-assets.js",
     "prestart": "npm run verify:harness",
     "start": "electron .",
     "prestart:debug": "npm run verify:harness",
@@ -14,7 +17,7 @@
     "test": "node --test test/*.test.js",
     "predist": "npm run verify:harness",
     "dist": "electron-builder",
-    "predist:win": "npm run verify:harness",
+    "predist:win": "npm run verify:harness && npm run runtime:node && npm run icon:build",
     "dist:win": "electron-builder --win",
     "postdist:win": "node scripts/verify-packaged-harness.js"
   },
@@ -57,6 +60,16 @@
       "assets/**/*",
       "package.json",
       "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime/node",
+        "to": "runtime/node",
+        "filter": [
+          "node.exe",
+          "runtime.json"
+        ]
+      }
     ],
     "directories": {
       "output": "release"
