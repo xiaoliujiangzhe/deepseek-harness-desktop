@@ -91,6 +91,7 @@
     "directories": {
       "output": "release"
     },
+    "artifactName": "DeepSeek-Harness-Setup-${version}.${ext}",
     "publish": [
       {
         "provider": "github",
