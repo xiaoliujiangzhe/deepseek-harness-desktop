@@ -8,7 +8,6 @@ const { pathToFileURL } = require('node:url');
 app.setPath('userData', path.join(__dirname, '..', 'design-demos', '.icon-electron-user-data'));
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-software-rasterizer');
 app.commandLine.appendSwitch('no-sandbox');
 
 function encodeIco(images) {
@@ -52,7 +51,16 @@ app.whenReady().then(async () => {
   await window.loadURL(pathToFileURL(renderFile).href);
   const captured = await window.webContents.capturePage();
   window.destroy();
-  if (captured.isEmpty()) throw new Error(`Chromium could not rasterize ${sourcePath}`);
+  if (captured.isEmpty()) {
+    fs.rmSync(renderFile, { force: true });
+    const existing = ['icon.png', 'tray-icon.png', 'icon.ico'].map((name) => path.join(assets, name));
+    if (existing.every((file) => fs.existsSync(file) && fs.statSync(file).size > 0)) {
+      console.warn(`Chromium could not rasterize ${sourcePath}; reusing the checked-in brand assets`);
+      app.quit();
+      return;
+    }
+    throw new Error(`Chromium could not rasterize ${sourcePath} and no checked-in brand assets are available`);
+  }
 
   const sizes = [16, 24, 32, 48, 64, 128, 256];
   const images = sizes.map((size) => ({

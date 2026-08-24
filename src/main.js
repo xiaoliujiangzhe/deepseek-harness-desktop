@@ -11,6 +11,7 @@ const { DesktopUpdateService, normalizeUpdatePreferences, readPortableNodeVersio
 const { migrateHarnessHome } = require('./harness-migration');
 const { EmbeddedBrowser, normalizeBrowserUrl } = require('./embedded-browser');
 const { LocalPreviewServer } = require('./local-preview-server');
+const { isSupportedTextFile, readWorkspaceTextFile, resolveWorkspaceTextFile, writeWorkspaceTextFile } = require('./text-file-editor');
 const { installMarketplacePlugin, listInstalled, resetMarketplaceCache, runPluginCommand, runtimePnpmPath, searchMarketplace, setPluginEnabled, updateInstalledPlugin } = require('./plugin-manager');
 const { backupConfiguration, buildDiagnosticReport, clearMarketplaceCache, redactSecrets, repairCredentialsVersion } = require('./diagnostics');
 
@@ -30,6 +31,7 @@ let pluginOperation = null;
 let diagnosticOperation = null;
 let localPreview = null;
 let desktopUpdater = null;
+const dirtyEditorFiles = new Set();
 
 async function fetchDesktopBuffer(url, headers = {}, options = {}) {
   const timeoutMs = Number(options.timeoutMs) || 15000;
@@ -323,12 +325,12 @@ function createMainWindow(url) {
   });
 
   // Harness resolves file references to absolute paths immediately before it
-  // calls host.openPath. Capture only HTML opens in the page's main world so
-  // the desktop shell can preview the exact file instead of guessing a cwd.
-  const installHtmlPreviewBridge = () => {
+  // calls host.openPath. Capture supported previews in the page's main world
+  // so the desktop shell receives the exact file instead of guessing a cwd.
+  const installFilePreviewBridge = () => {
     const script = `(() => {
-      if (window.__dshDesktopHtmlPreviewBridge) return;
-      window.__dshDesktopHtmlPreviewBridge = true;
+      if (window.__dshDesktopFilePreviewBridge) return;
+      window.__dshDesktopFilePreviewBridge = true;
       const nativeFetch = window.fetch.bind(window);
       window.fetch = async (input, init) => {
         try {
@@ -337,8 +339,9 @@ function createMainWindow(url) {
           if (method === 'POST' && requestUrl.origin === location.origin && requestUrl.pathname === '/api/host.openPath') {
             const body = init && typeof init.body === 'string' ? JSON.parse(init.body) : null;
             const file = body && body.method === 'host.openPath' && body.payload && body.payload.path;
-            if (typeof file === 'string' && /\\.html?$/i.test(file.trim())) {
-              window.postMessage({ type: 'dsh-desktop-preview-path-v1', path: file }, location.origin);
+            const supported = typeof file === 'string' && (/\\.html?$/i.test(file.trim()) || /(?:^|[\\\\/])(?:Dockerfile|Makefile|README|LICENSE)$/i.test(file.trim()) || /\\.(?:bat|c|cc|cfg|cjs|cmd|conf|cpp|cs|css|csv|dockerignore|editorconfig|env|gitattributes|gitignore|go|graphql|gql|h|hpp|ini|java|js|json|jsonc|jsx|less|log|lua|md|markdown|mjs|npmrc|php|properties|ps1|py|rb|rs|scss|sh|sql|svelte|toml|ts|tsx|txt|vue|xml|yaml|yml)$/i.test(file.trim()));
+            if (supported) {
+              window.postMessage({ type: 'dsh-desktop-file-path-v1', path: file }, location.origin);
               return new Response(JSON.stringify({
                 type: 'server-response',
                 rpcId: body.rpcId,
@@ -352,7 +355,7 @@ function createMainWindow(url) {
     })()`;
     mainWindow.webContents.executeJavaScript(script).catch(() => {});
   };
-  mainWindow.webContents.on('did-finish-load', installHtmlPreviewBridge);
+  mainWindow.webContents.on('did-finish-load', installFilePreviewBridge);
 
   // Lock the window title. The dsh web UI rewrites `document.title` to
   // "<session title> — DeepSeek Harness"; keep our clean app title instead.
@@ -748,6 +751,50 @@ ipcMain.handle('preview:open', async (_event, file) => {
     return { ok: true, url: await localPreview.previewUrl(file), file: String(file || '') };
   } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
 });
+ipcMain.handle('editor:open', (_event, file) => {
+  try {
+    if (!isSupportedTextFile(file)) throw new Error('该文件类型不支持内置编辑');
+    return { ok: true, ...readWorkspaceTextFile(currentWorkspace, file) };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('editor:pick', async () => {
+  try {
+    if (!currentWorkspace) throw new Error('当前工作区尚未初始化');
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '打开工作区文本文件',
+      defaultPath: currentWorkspace,
+      properties: ['openFile'],
+      filters: [
+        { name: '文本和代码文件', extensions: ['txt', 'md', 'json', 'jsonc', 'yaml', 'yml', 'js', 'jsx', 'ts', 'tsx', 'css', 'py', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'cs', 'sh', 'ps1', 'bat', 'cmd', 'xml', 'toml', 'ini', 'cfg', 'conf', 'log', 'sql', 'vue', 'svelte'] },
+        { name: '所有文件', extensions: ['*'] }
+      ]
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, cancelled: true };
+    return { ok: true, ...readWorkspaceTextFile(currentWorkspace, result.filePaths[0]) };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('editor:save', (_event, request) => {
+  try {
+    const result = writeWorkspaceTextFile(currentWorkspace, request || {});
+    if (result.ok) dirtyEditorFiles.delete(path.resolve(String(request && request.path || '')));
+    return result;
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('editor:dirty', (_event, file, dirty) => {
+  try {
+    const target = path.resolve(String(file || ''));
+    if (dirty) dirtyEditorFiles.add(target);
+    else dirtyEditorFiles.delete(target);
+    return { ok: true, count: dirtyEditorFiles.size };
+  } catch { return { ok: false, count: dirtyEditorFiles.size }; }
+});
+ipcMain.handle('editor:open-external', async (_event, file) => {
+  try {
+    const { target } = resolveWorkspaceTextFile(currentWorkspace, file, { enforceSize: false });
+    const message = await shell.openPath(target);
+    return message ? { ok: false, message } : { ok: true };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
 
 // --- App lifecycle ---
 
@@ -768,7 +815,27 @@ if (!gotLock) {
     launchService();
   });
 
-  app.on('before-quit', () => {
+  app.on('before-quit', (event) => {
+    if (!quitting && dirtyEditorFiles.size > 0) {
+      const options = {
+        type: 'warning',
+        buttons: ['取消退出', '放弃修改并退出'],
+        defaultId: 0,
+        cancelId: 0,
+        title: '存在未保存的文件',
+        message: `还有 ${dirtyEditorFiles.size} 个文件未保存。`,
+        detail: '退出后未保存的修改会丢失。'
+      };
+      const choice = mainWindow && !mainWindow.isDestroyed()
+        ? dialog.showMessageBoxSync(mainWindow, options)
+        : dialog.showMessageBoxSync(options);
+      if (choice === 0) {
+        event.preventDefault();
+        showMainWindow();
+        return;
+      }
+      dirtyEditorFiles.clear();
+    }
     quitting = true;
   });
 

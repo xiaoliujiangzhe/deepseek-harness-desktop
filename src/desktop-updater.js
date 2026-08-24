@@ -201,7 +201,7 @@ class DesktopUpdateService {
     if (!this.app.isPackaged) {
       return this.emit({
         status: 'unsupported',
-        message: '当前是开发预览模式；生成并安装 0.4.0 安装包后才能检查和安装桌面更新',
+        message: '当前是开发预览模式；只有安装打包后的正式版本才能检查和安装桌面更新',
         preferences
       });
     }

@@ -1128,6 +1128,42 @@ const TOOLS_CSS = `
 .dshd-library-link small { margin-top: 3px; color: #7b8392; font-size: 9px; }
 .dshd-library-remove { grid-column: 2; grid-row: 1; width: 24px; height: 24px; border: 0; border-radius: 3px; color: #7a8291; background: transparent; cursor: pointer; }
 .dshd-library-remove:hover { color: #b42318; background: #fceeed; }
+.dshd-editor-pane {
+  position: absolute;
+  z-index: 4;
+  inset: 44px 0 0 10px;
+  display: grid;
+  grid-template-rows: 38px 42px minmax(0, 1fr) 28px;
+  min-width: 0;
+  background: #fff;
+}
+.dshd-editor-pane[hidden] { display: none !important; }
+.dshd-editor-tabs { display: flex; min-width: 0; overflow-x: auto; overflow-y: hidden; padding-left: 6px; background: #f5f6f8; border-bottom: 1px solid #dfe3e9; scrollbar-width: thin; }
+.dshd-editor-tab { display: grid; grid-template-columns: minmax(54px, 1fr) 20px; align-items: center; gap: 4px; width: 164px; min-width: 100px; max-width: 190px; height: 33px; margin-top: 5px; padding: 0 4px 0 9px; border: 1px solid transparent; border-bottom: 0; border-radius: 5px 5px 0 0; color: #606879; background: transparent; cursor: pointer; }
+.dshd-editor-tab.active { color: #282d37; background: #fff; border-color: #dfe3e9; }
+.dshd-editor-tab-name { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.dshd-editor-tab.dirty .dshd-editor-tab-name::after { content: ' ●'; color: #4d6bfe; }
+.dshd-editor-tab-close { width: 20px !important; height: 20px !important; padding: 0 !important; border: 0 !important; border-radius: 3px !important; color: #6c7483; background: transparent !important; cursor: pointer; font-size: 15px !important; }
+.dshd-editor-tab-close:hover { color: #b42318; background: #fceeed !important; }
+.dshd-editor-toolbar { display: grid; grid-template-columns: auto auto auto auto minmax(100px, 1fr) auto auto auto; gap: 6px; align-items: center; padding: 5px 10px; background: #fafbfc; border-bottom: 1px solid #dfe3e9; }
+.dshd-editor-toolbar button { height: 30px; padding: 0 9px; border: 1px solid #dfe3e9; border-radius: 4px; color: #4e5665; background: #fff; cursor: pointer; font-size: 11px; }
+.dshd-editor-toolbar button:hover:not(:disabled) { color: #4d6bfe; border-color: #bdc6ff; background: #f3f5ff; }
+.dshd-editor-toolbar button:disabled { opacity: .42; cursor: default; }
+.dshd-editor-find { min-width: 0; height: 30px; padding: 0 9px; border: 1px solid #d7dbe3; border-radius: 4px; color: #404755; background: #fff; font-size: 11px; }
+.dshd-editor-canvas { display: grid; grid-template-columns: auto minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; background: #fff; }
+.dshd-editor-canvas.wrap-mode { grid-template-columns: minmax(0, 1fr); }
+.dshd-editor-canvas.wrap-mode .dshd-editor-lines,
+.dshd-editor-canvas.no-gutter .dshd-editor-lines { display: none; }
+.dshd-editor-lines { min-width: 44px; margin: 0; overflow: hidden; padding: 14px 9px 40px 7px; color: #a0a6b1; background: #f7f8fa; border-right: 1px solid #e5e7eb; font: 12px/1.6 Consolas, 'Cascadia Mono', monospace; text-align: right; user-select: none; }
+.dshd-editor-text { width: 100%; height: 100%; min-width: 0; min-height: 0; resize: none; overflow: auto; padding: 14px 16px 40px; border: 0; outline: 0; color: #232833; background: #fff; font: 12px/1.6 Consolas, 'Cascadia Mono', monospace; tab-size: 2; white-space: pre; }
+.dshd-editor-text.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+.dshd-editor-empty { grid-column: 1 / -1; display: grid; place-items: center; color: #7c8493; font-size: 12px; }
+.dshd-editor-lines[hidden], .dshd-editor-text[hidden], .dshd-editor-empty[hidden] { display: none !important; }
+.dshd-editor-status { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0 12px; color: #687083; background: #fafbfc; border-top: 1px solid #e3e6eb; font-size: 10px; }
+.dshd-editor-status span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dshd-editor-status.error { color: #a52a22; background: #fff4f2; }
+#${TOOLS_SHELL_ID}.editor-mode .dshd-local-badge,
+#${TOOLS_SHELL_ID}.editor-mode .dshd-browser-only { display: none !important; }
 a[data-dsh-browser-link] { cursor: pointer; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: 3px; }
 `;
 
@@ -1144,6 +1180,7 @@ let closeDiagnosticsCenter = null;
 let openUpdateCenter = null;
 let closeUpdateCenter = null;
 let closeBrowserPanel = null;
+let openFileEditor = null;
 let browserPanelWidth = 0;
 let toolsLauncherPosition = null;
 
@@ -1523,6 +1560,9 @@ function makeToolShell() {
   const launchBrowser = toolButton('◫', '', '显示/隐藏侧边面板（Ctrl+Alt+B）');
   launchBrowser.setAttribute('aria-label', '显示/隐藏侧边面板');
   launcher.appendChild(launchBrowser);
+  const launchEditor = toolButton('▧', '', '打开文件编辑器');
+  launchEditor.setAttribute('aria-label', '打开文件编辑器');
+  launcher.appendChild(launchEditor);
   const launchPlugins = toolButton('🧩', '', '打开插件中心');
   launchPlugins.setAttribute('aria-label', '打开插件中心');
   launcher.appendChild(launchPlugins);
@@ -1544,6 +1584,7 @@ function makeToolShell() {
   const capture = toolButton('▣', 'dshd-tool-action', '截取当前网页并加入聊天');
   const downloadButton = toolButton('⇩', 'dshd-tool-action', '显示下载中心');
   const libraryButton = toolButton('▤', 'dshd-tool-action', '显示书签和历史记录');
+  for (const item of [quoteSelection, capture, downloadButton, libraryButton]) item.classList.add('dshd-browser-only');
   quoteSelection.setAttribute('aria-label', '引用网页选中文字到聊天');
   capture.setAttribute('aria-label', '截取当前网页并加入聊天');
   downloadButton.setAttribute('aria-label', '显示下载中心');
@@ -1561,6 +1602,7 @@ function makeToolShell() {
   head.appendChild(close);
 
   const tabs = el('div', 'dshd-browser-tabs');
+  tabs.classList.add('dshd-browser-only');
   const tabList = el('div', 'dshd-browser-tab-list');
   tabList.setAttribute('role', 'tablist');
   const newTab = toolButton('+', 'dshd-tab-new', '新建标签页（Ctrl+T）');
@@ -1568,6 +1610,7 @@ function makeToolShell() {
   tabs.appendChild(newTab);
 
   const chrome = el('div', 'dshd-browser-chrome');
+  chrome.classList.add('dshd-browser-only');
   const resizeRail = el('div', 'dshd-browser-resize-rail');
   resizeRail.setAttribute('aria-label', '拖动调整浏览器宽度');
   const back = toolButton('‹', '', '后退');
@@ -1593,6 +1636,7 @@ function makeToolShell() {
   chrome.appendChild(external);
 
   const findBar = el('div', 'dshd-browser-find');
+  findBar.classList.add('dshd-browser-only');
   const findInput = el('input', '');
   findInput.type = 'text';
   findInput.placeholder = '在页面中查找';
@@ -1606,11 +1650,13 @@ function makeToolShell() {
   findBar.appendChild(findNext);
   findBar.appendChild(closeFind);
   const errorBar = el('div', 'dshd-browser-error');
+  errorBar.classList.add('dshd-browser-only');
   const errorText = el('span', '', '网页加载失败');
   const retryError = toolButton('重新加载', '', '重新加载当前网页');
   errorBar.appendChild(errorText);
   errorBar.appendChild(retryError);
   const downloadsPanel = el('section', 'dshd-downloads');
+  downloadsPanel.classList.add('dshd-browser-only');
   const downloadHead = el('div', 'dshd-download-head');
   downloadHead.appendChild(el('span', '', '下载中心'));
   const clearDownloads = toolButton('清除已完成', '', '清除已结束的下载记录');
@@ -1619,6 +1665,7 @@ function makeToolShell() {
   downloadsPanel.appendChild(downloadHead);
   downloadsPanel.appendChild(downloadList);
   const libraryPanel = el('section', 'dshd-browser-library');
+  libraryPanel.classList.add('dshd-browser-only');
   const bookmarksSection = el('div', 'dshd-library-section');
   const bookmarksHead = el('div', 'dshd-library-head');
   bookmarksHead.appendChild(el('span', '', '书签'));
@@ -1636,6 +1683,51 @@ function makeToolShell() {
   libraryPanel.appendChild(bookmarksSection);
   libraryPanel.appendChild(historySection);
   const progress = el('div', 'dshd-browser-progress');
+  progress.classList.add('dshd-browser-only');
+
+  const editorPane = el('section', 'dshd-editor-pane');
+  editorPane.hidden = true;
+  const editorTabs = el('div', 'dshd-editor-tabs');
+  editorTabs.setAttribute('role', 'tablist');
+  const editorToolbar = el('div', 'dshd-editor-toolbar');
+  const editorOpen = toolButton('打开', '', '打开工作区文本文件');
+  const editorSave = toolButton('保存', '', '保存当前文件（Ctrl+S）');
+  const editorReload = toolButton('重载', '', '从磁盘重新载入');
+  const editorExternal = toolButton('外部打开', '', '使用系统关联的编辑器打开');
+  const editorFind = el('input', 'dshd-editor-find');
+  editorFind.type = 'text';
+  editorFind.placeholder = '在文件中查找（Ctrl+F）';
+  const editorFindPrevious = toolButton('↑', '', '上一个匹配项');
+  const editorFindNext = toolButton('↓', '', '下一个匹配项');
+  const editorWrap = toolButton('自动换行', '', '切换自动换行');
+  editorToolbar.appendChild(editorOpen);
+  editorToolbar.appendChild(editorSave);
+  editorToolbar.appendChild(editorReload);
+  editorToolbar.appendChild(editorExternal);
+  editorToolbar.appendChild(editorFind);
+  editorToolbar.appendChild(editorFindPrevious);
+  editorToolbar.appendChild(editorFindNext);
+  editorToolbar.appendChild(editorWrap);
+  const editorCanvas = el('div', 'dshd-editor-canvas');
+  const editorLines = el('pre', 'dshd-editor-lines');
+  const editorText = el('textarea', 'dshd-editor-text');
+  editorText.spellcheck = false;
+  editorText.setAttribute('aria-label', '文件内容');
+  const editorEmpty = el('div', 'dshd-editor-empty', '从聊天中点击文本文件即可在这里打开');
+  editorCanvas.appendChild(editorLines);
+  editorCanvas.appendChild(editorText);
+  editorCanvas.appendChild(editorEmpty);
+  const editorStatus = el('footer', 'dshd-editor-status');
+  const editorPath = el('span', '', '没有打开文件');
+  const editorPosition = el('span', '', 'Ln 1, Col 1');
+  const editorEncoding = el('span', '', 'UTF-8');
+  editorStatus.appendChild(editorPath);
+  editorStatus.appendChild(editorPosition);
+  editorStatus.appendChild(editorEncoding);
+  editorPane.appendChild(editorTabs);
+  editorPane.appendChild(editorToolbar);
+  editorPane.appendChild(editorCanvas);
+  editorPane.appendChild(editorStatus);
 
   shell.appendChild(head);
   shell.appendChild(tabs);
@@ -1646,6 +1738,7 @@ function makeToolShell() {
   shell.appendChild(libraryPanel);
   shell.appendChild(progress);
   shell.appendChild(resizeRail);
+  shell.appendChild(editorPane);
   document.body.appendChild(launcher);
   document.body.appendChild(shell);
   toolsLauncher = launcher;
@@ -1681,6 +1774,256 @@ function makeToolShell() {
   };
   dragHandle.addEventListener('pointerup', finishToolbarDrag);
   dragHandle.addEventListener('pointercancel', finishToolbarDrag);
+
+  const editorDocuments = [];
+  let activeEditorPath = '';
+  let editorWrapEnabled = localStorage.getItem('dsh-desktop-editor-wrap') === 'true';
+  const editorKey = (file) => String(file || '').toLocaleLowerCase();
+  const activeEditor = () => editorDocuments.find((item) => editorKey(item.path) === editorKey(activeEditorPath)) || null;
+  const editorContent = (value) => String(value ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const setEditorMessage = (message, error = false) => {
+    editorStatus.classList.toggle('error', error);
+    editorPath.textContent = message || (activeEditor() ? activeEditor().relativePath : '没有打开文件');
+  };
+  const syncEditorDirty = (document) => {
+    const dirty = document.content !== document.savedContent;
+    if (document.dirty === dirty) return;
+    document.dirty = dirty;
+    ipcRenderer.invoke('editor:dirty', document.path, dirty).catch(() => {});
+  };
+  const updateEditorLines = () => {
+    const document = activeEditor();
+    if (!document) {
+      editorLines.textContent = '';
+      return;
+    }
+    const lineCount = Math.max(1, (editorText.value.match(/\n/g) || []).length + 1);
+    editorCanvas.classList.toggle('no-gutter', lineCount > 50000);
+    if (lineCount > 50000) {
+      editorLines.textContent = '';
+      return;
+    }
+    editorLines.textContent = Array.from({ length: lineCount }, (_item, index) => index + 1).join('\n');
+  };
+  const updateEditorPosition = () => {
+    const before = editorText.value.slice(0, editorText.selectionStart);
+    const rows = before.split('\n');
+    editorPosition.textContent = `Ln ${rows.length}, Col ${rows[rows.length - 1].length + 1}`;
+  };
+  const renderEditorTabs = () => {
+    editorTabs.replaceChildren();
+    for (const document of editorDocuments) {
+      const tab = el('div', `dshd-editor-tab${editorKey(document.path) === editorKey(activeEditorPath) ? ' active' : ''}${document.dirty ? ' dirty' : ''}`);
+      tab.setAttribute('role', 'tab');
+      tab.title = document.path;
+      tab.appendChild(el('span', 'dshd-editor-tab-name', document.name));
+      const tabClose = toolButton('×', 'dshd-editor-tab-close', '关闭文件');
+      tab.appendChild(tabClose);
+      tab.addEventListener('click', () => {
+        activeEditorPath = document.path;
+        renderEditor();
+      });
+      tabClose.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (document.dirty && !window.confirm(`${document.name} 尚未保存，确定放弃修改并关闭吗？`)) return;
+        ipcRenderer.invoke('editor:dirty', document.path, false).catch(() => {});
+        const index = editorDocuments.indexOf(document);
+        editorDocuments.splice(index, 1);
+        if (editorKey(activeEditorPath) === editorKey(document.path)) {
+          activeEditorPath = (editorDocuments[index] || editorDocuments[index - 1] || {}).path || '';
+        }
+        renderEditor();
+      });
+      editorTabs.appendChild(tab);
+    }
+  };
+  const renderEditor = () => {
+    const document = activeEditor();
+    renderEditorTabs();
+    const empty = !document;
+    editorEmpty.hidden = !empty;
+    editorLines.hidden = empty;
+    editorText.hidden = empty;
+    editorSave.disabled = empty || !document.dirty;
+    editorReload.disabled = empty;
+    editorExternal.disabled = empty;
+    editorFind.disabled = empty;
+    editorFindPrevious.disabled = empty;
+    editorFindNext.disabled = empty;
+    editorWrap.disabled = empty;
+    if (empty) {
+      editorText.value = '';
+      editorPath.textContent = '没有打开文件';
+      editorEncoding.textContent = 'UTF-8';
+      editorPosition.textContent = 'Ln 1, Col 1';
+      return;
+    }
+    editorText.value = document.content;
+    editorText.classList.toggle('wrap', editorWrapEnabled);
+    editorCanvas.classList.toggle('wrap-mode', editorWrapEnabled);
+    editorWrap.textContent = editorWrapEnabled ? '取消换行' : '自动换行';
+    editorStatus.classList.remove('error');
+    editorPath.textContent = `${document.relativePath}${document.dirty ? ' · 未保存' : ''}`;
+    editorPath.title = document.path;
+    editorEncoding.textContent = `${String(document.encoding || 'utf8').toUpperCase()} · ${document.eol === 'crlf' ? 'CRLF' : 'LF'}`;
+    updateEditorLines();
+    updateEditorPosition();
+    editorText.focus();
+  };
+  const showEditor = async (document) => {
+    if (closePluginCenter) closePluginCenter();
+    if (closeDiagnosticsCenter) closeDiagnosticsCenter();
+    if (closeUpdateCenter) closeUpdateCenter();
+    await ipcRenderer.invoke('browser:hide').catch(() => {});
+    toolMode = 'editor';
+    shell.classList.add('editor-mode');
+    shell.classList.remove('find-open');
+    editorPane.hidden = false;
+    title.textContent = '文件编辑器';
+    meta.textContent = document.relativePath;
+    meta.title = document.path;
+    shell.hidden = false;
+    launcher.hidden = true;
+    setToolsLayout();
+    renderEditor();
+  };
+  openFileEditor = async (file) => {
+    const existing = editorDocuments.find((item) => editorKey(item.path) === editorKey(file));
+    if (existing && existing.dirty) {
+      activeEditorPath = existing.path;
+      await showEditor(existing);
+      return { ok: true, existing: true };
+    }
+    const response = await ipcRenderer.invoke('editor:open', file);
+    if (!response || !response.ok) {
+      await showEditor({ relativePath: '文件无法内置打开', path: String(file || '') });
+      meta.classList.add('error');
+      meta.textContent = (response && response.message) || '文件打开失败';
+      setEditorMessage(meta.textContent, true);
+      if (window.confirm(`${meta.textContent}\n\n是否改用系统关联的编辑器打开？`)) {
+        const externalResponse = await ipcRenderer.invoke('editor:open-external', file);
+        if (!externalResponse || !externalResponse.ok) setEditorMessage((externalResponse && externalResponse.message) || '外部打开失败', true);
+      }
+      return response;
+    }
+    const document = existing || {};
+    Object.assign(document, response, {
+      content: editorContent(response.content),
+      savedContent: editorContent(response.content),
+      dirty: false
+    });
+    if (!existing) editorDocuments.push(document);
+    activeEditorPath = document.path;
+    await showEditor(document);
+    return response;
+  };
+  const showEmptyEditor = async () => {
+    const document = activeEditor() || { relativePath: '选择工作区内的文本或代码文件', path: '' };
+    await showEditor(document);
+  };
+  const saveEditor = async (force = false) => {
+    const document = activeEditor();
+    if (!document) return;
+    document.content = editorText.value;
+    setEditorMessage('正在保存…');
+    let response = await ipcRenderer.invoke('editor:save', { ...document, content: document.content, force });
+    if (response && response.conflict) {
+      const overwrite = window.confirm('文件已被其他程序修改。确定用当前编辑器内容覆盖磁盘文件吗？');
+      if (overwrite) response = await ipcRenderer.invoke('editor:save', { ...document, content: document.content, force: true });
+    }
+    if (!response || !response.ok) {
+      setEditorMessage((response && response.message) || '保存失败', true);
+      return;
+    }
+    document.revision = response.revision;
+    document.size = response.size;
+    document.savedContent = document.content;
+    syncEditorDirty(document);
+    renderEditor();
+    setEditorMessage(`${document.relativePath} · 已保存`);
+  };
+  const reloadEditor = async () => {
+    const document = activeEditor();
+    if (!document) return;
+    if (document.dirty && !window.confirm('当前修改尚未保存，确定从磁盘重新载入吗？')) return;
+    const response = await ipcRenderer.invoke('editor:open', document.path);
+    if (!response || !response.ok) return setEditorMessage((response && response.message) || '重新载入失败', true);
+    ipcRenderer.invoke('editor:dirty', document.path, false).catch(() => {});
+    Object.assign(document, response, { content: editorContent(response.content), savedContent: editorContent(response.content), dirty: false });
+    renderEditor();
+    setEditorMessage(`${document.relativePath} · 已重新载入`);
+  };
+  const findEditorText = (forward = true) => {
+    const query = editorFind.value;
+    if (!query || !activeEditor()) return;
+    const value = editorText.value.toLocaleLowerCase();
+    const needle = query.toLocaleLowerCase();
+    let index = forward ? value.indexOf(needle, editorText.selectionEnd) : value.lastIndexOf(needle, Math.max(0, editorText.selectionStart - 1));
+    if (index < 0) index = forward ? value.indexOf(needle) : value.lastIndexOf(needle);
+    if (index < 0) return setEditorMessage(`没有找到“${query}”`, true);
+    editorText.focus();
+    editorText.setSelectionRange(index, index + query.length);
+    updateEditorPosition();
+    setEditorMessage(activeEditor().relativePath);
+  };
+  editorText.addEventListener('input', () => {
+    const document = activeEditor();
+    if (!document) return;
+    document.content = editorText.value;
+    syncEditorDirty(document);
+    editorSave.disabled = !document.dirty;
+    editorPath.textContent = `${document.relativePath}${document.dirty ? ' · 未保存' : ''}`;
+    renderEditorTabs();
+    updateEditorLines();
+    updateEditorPosition();
+  });
+  editorText.addEventListener('scroll', () => { editorLines.scrollTop = editorText.scrollTop; });
+  editorText.addEventListener('click', updateEditorPosition);
+  editorText.addEventListener('keyup', updateEditorPosition);
+  editorText.addEventListener('keydown', (event) => {
+    if (event.ctrlKey && event.key.toLocaleLowerCase() === 's') { event.preventDefault(); saveEditor(); }
+    else if (event.ctrlKey && event.key.toLocaleLowerCase() === 'f') { event.preventDefault(); editorFind.focus(); editorFind.select(); }
+    else if (event.key === 'Tab') {
+      event.preventDefault();
+      const start = editorText.selectionStart;
+      editorText.setRangeText('  ', start, editorText.selectionEnd, 'end');
+      editorText.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+  editorOpen.addEventListener('click', async () => {
+    const response = await ipcRenderer.invoke('editor:pick');
+    if (!response || !response.ok) {
+      if (!response || !response.cancelled) setEditorMessage((response && response.message) || '文件打开失败', true);
+      return;
+    }
+    const existing = editorDocuments.find((item) => editorKey(item.path) === editorKey(response.path));
+    if (existing && existing.dirty) {
+      activeEditorPath = existing.path;
+      renderEditor();
+      return;
+    }
+    const document = existing || {};
+    Object.assign(document, response, { content: editorContent(response.content), savedContent: editorContent(response.content), dirty: false });
+    if (!existing) editorDocuments.push(document);
+    activeEditorPath = document.path;
+    renderEditor();
+  });
+  editorSave.addEventListener('click', () => saveEditor());
+  editorReload.addEventListener('click', reloadEditor);
+  editorExternal.addEventListener('click', async () => {
+    const document = activeEditor();
+    if (!document) return;
+    const response = await ipcRenderer.invoke('editor:open-external', document.path);
+    if (!response || !response.ok) setEditorMessage((response && response.message) || '外部打开失败', true);
+  });
+  editorFind.addEventListener('keydown', (event) => { if (event.key === 'Enter') findEditorText(!event.shiftKey); });
+  editorFindPrevious.addEventListener('click', () => findEditorText(false));
+  editorFindNext.addEventListener('click', () => findEditorText(true));
+  editorWrap.addEventListener('click', () => {
+    editorWrapEnabled = !editorWrapEnabled;
+    localStorage.setItem('dsh-desktop-editor-wrap', String(editorWrapEnabled));
+    renderEditor();
+  });
 
   const renderTabs = () => {
     tabList.replaceChildren();
@@ -1836,6 +2179,10 @@ function makeToolShell() {
   const setMode = async (mode, nextUrl, options = {}) => {
     if (mode !== 'browser') return;
     toolMode = 'browser';
+    shell.classList.remove('editor-mode');
+    editorPane.hidden = true;
+    title.textContent = '浏览器';
+    meta.classList.remove('error');
     if (options.home) browserUrl = '';
     if (nextUrl) browserUrl = nextUrl;
     address.value = browserUrl;
@@ -1968,6 +2315,10 @@ function makeToolShell() {
     if (toolMode === 'browser' && !shell.hidden) closeTools();
     else openBrowserPanel();
   });
+  launchEditor.addEventListener('click', () => {
+    if (toolMode === 'editor' && !shell.hidden) closeTools();
+    else showEmptyEditor();
+  });
   close.addEventListener('click', closeTools);
   address.addEventListener('keydown', (event) => { if (event.key === 'Enter') navigate(); });
   back.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:back')));
@@ -2021,10 +2372,14 @@ function makeToolShell() {
   });
   window.addEventListener('message', async (event) => {
     const data = event.data;
-    if (event.source !== window || event.origin !== window.location.origin || !data || data.type !== 'dsh-desktop-preview-path-v1') return;
-    if (typeof data.path !== 'string' || !/\.html?$/i.test(data.path.trim())) return;
-    const preview = await ipcRenderer.invoke('preview:open', data.path);
-    if (preview && preview.ok) openBrowserPanel(preview.url, { newTab: Boolean(browserState.open) }).catch(() => {});
+    if (event.source !== window || event.origin !== window.location.origin || !data || data.type !== 'dsh-desktop-file-path-v1') return;
+    if (typeof data.path !== 'string') return;
+    if (/\.html?$/i.test(data.path.trim())) {
+      const preview = await ipcRenderer.invoke('preview:open', data.path);
+      if (preview && preview.ok) openBrowserPanel(preview.url, { newTab: Boolean(browserState.open) }).catch(() => {});
+      return;
+    }
+    if (openFileEditor) openFileEditor(data.path).catch(() => {});
   });
   window.addEventListener('keydown', (event) => {
     if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'b') {
