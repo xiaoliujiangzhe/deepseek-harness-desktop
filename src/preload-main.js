@@ -616,7 +616,7 @@ function buildPluginSettingsRow() {
   const head = el('div', 'dshd-plugin-head');
   const copy = el('div', 'dshd-plugin-head-copy');
   copy.appendChild(el('div', 'dshd-title', '搜索与管理'));
-  copy.appendChild(el('div', 'dshd-hint', '目录来自 dsh-market 使用的 curated 插件索引。安装前会备份 web profile，插件变更后需要重启桌面端。'));
+  copy.appendChild(el('div', 'dshd-hint', '目录首次联网读取后会缓存 6 小时，本地搜索无需重复下载。安装前会备份 web profile，插件变更后需要重启桌面端。'));
   head.appendChild(copy);
   row.appendChild(head);
 
@@ -754,7 +754,7 @@ function buildPluginSettingsRow() {
       if (item.category) meta.appendChild(el('span', '', item.category));
       if (item.stars) meta.appendChild(el('span', '', `★ ${item.stars}`));
       if (item.downloads) meta.appendChild(el('span', '', `下载 ${item.downloads}`));
-      if (item.source) meta.appendChild(el('span', 'dsh-plugin-card-source', item.source === 'npm' ? 'npm tarball' : 'GitHub source'));
+      if (item.source) meta.appendChild(el('span', 'dsh-plugin-card-source', item.source === 'npm' ? 'npm 成品包' : 'GitHub 成品校验'));
       if (meta.childNodes.length) card.appendChild(meta);
       if (item.repositoryUrl) {
         const link = el('a', 'dsh-plugin-card-link', '查看仓库');
@@ -765,27 +765,37 @@ function buildPluginSettingsRow() {
       }
       const foot = el('div', 'dshd-plugin-card-foot');
       foot.appendChild(el('span', 'dshd-plugin-compat compatible', item.curated ? 'curated 来源' : '来源待核实'));
-      const existing = installedByName.get(item.installSpec) || installedByName.get(item.name);
-      const install = el('button', 'dshd-btn', existing ? '已安装' : '安装');
+      const existing = installedByName.get(item.installedPackageName) || installedByName.get(item.installSpec) || installedByName.get(item.name);
+      const install = el('button', 'dshd-btn', existing ? '已安装' : (item.source === 'github' ? '校验并安装' : '安装'));
       install.disabled = Boolean(existing);
       const cardStatus = el('div', 'dshd-plugin-card-status');
       install.addEventListener('click', async () => {
         install.disabled = true;
         install.textContent = '安装中…';
         setStatus(`正在安装 ${item.name}，请勿关闭桌面端。`);
-        setCardStatus(card, cardStatus, 'working', `正在从 ${item.source === 'npm' ? 'npm' : 'GitHub'} 获取插件并备份 web profile…`);
-        const response = await ipcRenderer.invoke('plugins:install', item.installSpec);
+        setCardStatus(card, cardStatus, 'working', item.source === 'github'
+          ? '正在锁定 GitHub commit，并检查 bundle、入口文件和安装脚本…'
+          : '正在从 npm 获取成品包并备份 web profile…');
+        const response = await ipcRenderer.invoke('plugins:install', {
+          name: item.name,
+          installSpec: item.installSpec,
+          source: item.source,
+          repositoryUrl: item.repositoryUrl
+        });
         if (!response || !response.ok) {
           const message = (response && response.message) || '安装失败，请稍后重试。';
           setStatus('安装未完成，请查看对应插件的提示。', true);
           setCardStatus(card, cardStatus, 'error', message);
           install.disabled = false;
-          install.textContent = '重试安装';
+          install.textContent = item.source === 'github' ? '重新校验' : '重试安装';
           return;
         }
         install.textContent = '已安装';
         setStatus(`已安装 ${item.name}。需要重启桌面端。`);
-        setCardStatus(card, cardStatus, 'success', '安装完成。重启桌面端后会加载这个插件。');
+        const sourceDetail = response.sourceKind === 'github-verified' && response.commit
+          ? `已锁定并安装 commit ${response.commit.slice(0, 12)}。`
+          : '成品包安装完成。';
+        setCardStatus(card, cardStatus, 'success', `${sourceDetail} 重启桌面端后会加载这个插件。`);
         showRestart();
         await loadInstalled(true);
       });
@@ -815,8 +825,8 @@ function buildPluginSettingsRow() {
 
   async function searchMarketplace() {
     searchButton.disabled = true;
-    setStatus('正在读取 dsh-market curated 插件目录…');
-    renderEmpty(marketplaceList, '正在搜索…');
+    setStatus('正在读取插件目录；已有缓存时会立即完成…');
+    renderEmpty(marketplaceList, '正在加载目录并搜索…');
     const response = await ipcRenderer.invoke('plugins:search', search.value);
     searchButton.disabled = false;
     if (!response || !response.ok) {
@@ -825,7 +835,13 @@ function buildPluginSettingsRow() {
       return;
     }
     renderMarketplace(response.items || []);
-    setStatus(`搜索完成，找到 ${(response.items || []).length} 个插件。`);
+    const catalog = response.catalog || {};
+    const sourceLabel = catalog.source === 'network'
+      ? '已更新网络目录'
+      : catalog.source === 'stale'
+        ? '已使用本地旧缓存，正在后台更新'
+        : '已使用本地缓存';
+    setStatus(`搜索完成，找到 ${(response.items || []).length} 个插件。${sourceLabel}。`);
   }
 
   searchButton.addEventListener('click', searchMarketplace);
@@ -934,7 +950,7 @@ const TOOLS_CSS = `
   inset: 0 0 0 auto;
   width: 44vw;
   display: grid;
-  grid-template-rows: 48px 48px minmax(0, 1fr);
+  grid-template-rows: 44px 38px 46px minmax(0, 1fr);
   overflow: hidden;
   color: #181b22;
   background: #fff;
@@ -950,13 +966,15 @@ const TOOLS_CSS = `
   border-bottom: 1px solid #dfe3e9;
 }
 .dshd-tool-head strong { font-size: 14px; white-space: nowrap; }
+.dshd-local-badge { display: none; padding: 2px 6px; border: 1px solid #b8dfc4; border-radius: 3px; color: #277443; background: #edf9f0; font-size: 10px; white-space: nowrap; }
+.dshd-local-badge.visible { display: inline-block; }
 .dshd-tool-expand { width: 30px; height: 30px; border: 1px solid #dfe3e9; border-radius: 4px; color: #596172; background: #fff; cursor: pointer; font-size: 16px; }
 .dshd-tool-expand:hover { color: #4d6bfe; background: #edf0ff; border-color: #bdc6ff; }
 .dshd-browser-resize-rail {
   position: absolute;
   z-index: 2;
   left: 0;
-  top: 96px;
+  top: 128px;
   bottom: 0;
   width: 10px;
   cursor: col-resize;
@@ -1000,19 +1018,43 @@ const TOOLS_CSS = `
 .dshd-browser-state { min-width: 0; }
 .dshd-browser-state.loading::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #4d6bfe; box-shadow: 0 0 0 3px #edf0ff; vertical-align: 1px; }
 .dshd-browser-state.error { color: #b42318; }
+.dshd-browser-progress { position: absolute; z-index: 3; top: 126px; left: 10px; right: 0; height: 2px; overflow: hidden; pointer-events: none; }
+.dshd-browser-progress::after { content: ''; display: block; width: 36%; height: 100%; background: #4d6bfe; transform: translateX(-110%); }
+.dshd-browser-progress.loading::after { animation: dshd-progress 1.05s ease-in-out infinite; }
+@keyframes dshd-progress { to { transform: translateX(390%); } }
+.dshd-browser-tabs { display: grid; grid-template-columns: minmax(0, 1fr) 34px; align-items: stretch; min-width: 0; padding-left: 10px; background: #f5f6f8; border-bottom: 1px solid #dfe3e9; }
+.dshd-browser-tab-list { display: flex; align-items: end; gap: 2px; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.dshd-browser-tab { display: grid; grid-template-columns: 14px minmax(44px, 1fr) 20px; align-items: center; gap: 5px; width: 170px; min-width: 96px; max-width: 190px; height: 32px; margin-top: 5px; padding: 0 4px 0 8px; border: 1px solid transparent; border-bottom: 0; border-radius: 5px 5px 0 0; color: #606879; background: transparent; cursor: pointer; }
+.dshd-browser-tab.active { color: #282d37; background: #fff; border-color: #dfe3e9; }
+.dshd-browser-tab.loading .dshd-tab-icon { animation: dshd-spin .9s linear infinite; }
+@keyframes dshd-spin { to { transform: rotate(360deg); } }
+.dshd-tab-icon { width: 14px; height: 14px; object-fit: contain; }
+.dshd-tab-title { overflow: hidden; font-size: 11px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.dshd-tab-close { width: 20px !important; min-width: 20px !important; height: 20px !important; padding: 0 !important; border: 0 !important; border-radius: 3px !important; background: transparent !important; font-size: 15px !important; line-height: 1 !important; }
+.dshd-tab-close:hover { color: #b42318 !important; background: #fceeed !important; }
+.dshd-tab-new { align-self: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 4px; color: #596172; background: transparent; cursor: pointer; font-size: 18px; }
+.dshd-tab-new:hover { color: #4d6bfe; background: #e8ebf9; }
 .dshd-browser-chrome {
   display: grid;
-  grid-template-columns: 34px 34px 34px minmax(0, 1fr) auto;
+  grid-template-columns: 32px 32px 32px minmax(90px, 1fr) 32px 32px 32px;
   gap: 6px;
   align-items: center;
   padding: 6px 10px;
   background: #fafbfc;
   border-bottom: 1px solid #dfe3e9;
 }
-.dshd-browser-chrome button { height: 34px; min-width: 34px; border: 1px solid #dfe3e9; border-radius: 4px; color: #4e5665; background: #fff; cursor: pointer; font-size: 17px; }
-.dshd-browser-chrome button:last-child { padding: 0 12px; color: #fff; background: #4d6bfe; border-color: #4d6bfe; font-size: 12px; font-weight: 650; }
+.dshd-browser-chrome button { height: 32px; min-width: 32px; padding: 0; border: 1px solid #dfe3e9; border-radius: 4px; color: #4e5665; background: #fff; cursor: pointer; font-size: 16px; }
+.dshd-browser-chrome button:hover:not(:disabled) { color: #4d6bfe; border-color: #bdc6ff; background: #f3f5ff; }
 .dshd-browser-chrome button:disabled { opacity: .38; cursor: default; }
-.dshd-browser-url { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid #d7dbe3; border-radius: 4px; color: #404755; background: #fff; font-size: 12px; }
+.dshd-browser-url { min-width: 0; height: 32px; padding: 0 10px; border: 1px solid #d7dbe3; border-radius: 4px; color: #404755; background: #fff; font-size: 12px; }
+.dshd-browser-find { display: none; grid-template-columns: minmax(100px, 1fr) auto 30px 30px 30px; gap: 5px; align-items: center; padding: 4px 10px 4px 16px; background: #fafbfc; border-bottom: 1px solid #dfe3e9; }
+#${TOOLS_SHELL_ID}.find-open { grid-template-rows: 44px 38px 46px 40px minmax(0, 1fr); }
+#${TOOLS_SHELL_ID}.find-open .dshd-browser-find { display: grid; }
+#${TOOLS_SHELL_ID}.find-open .dshd-browser-resize-rail { top: 168px; }
+#${TOOLS_SHELL_ID}.find-open .dshd-browser-progress { top: 166px; }
+.dshd-browser-find input { min-width: 0; height: 30px; padding: 0 8px; border: 1px solid #d7dbe3; border-radius: 4px; color: #404755; background: #fff; font-size: 12px; }
+.dshd-browser-find span { min-width: 46px; color: #737b8b; font-size: 11px; text-align: center; }
+.dshd-browser-find button { width: 30px; height: 30px; padding: 0; border: 1px solid #dfe3e9; border-radius: 4px; color: #596172; background: #fff; cursor: pointer; }
 a[data-dsh-browser-link] { cursor: pointer; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: 3px; }
 `;
 
@@ -1073,9 +1115,10 @@ function setToolsLayout() {
   browserPanelWidth = clampBrowserWidth(browserPanelWidth);
   if (toolsShell) toolsShell.style.width = `${browserPanelWidth}px`;
   const panelLeft = Math.max(0, window.innerWidth - browserPanelWidth);
+  const contentTop = toolsShell && toolsShell.classList.contains('find-open') ? 168 : 128;
   ipcRenderer.invoke('browser:layout', {
     left: panelLeft + TOOLS_RESIZE_RAIL_WIDTH,
-    top: 96,
+    top: contentTop,
     width: Math.max(1, browserPanelWidth - TOOLS_RESIZE_RAIL_WIDTH)
   }).catch(() => {});
 }
@@ -1101,13 +1144,22 @@ function makeToolShell() {
   shell.hidden = true;
   const head = el('header', 'dshd-tool-head');
   const title = el('strong', '', '浏览器');
+  const localBadge = el('span', 'dshd-local-badge', '本地预览');
   const meta = el('span', 'dshd-tool-meta dshd-browser-state', '准备就绪');
   const expand = toolButton('⇱', 'dshd-tool-expand', '展开 / 恢复浏览器宽度');
   const close = toolButton('×', 'dshd-tool-close', '关闭内置浏览器');
   head.appendChild(title);
+  head.appendChild(localBadge);
   head.appendChild(meta);
   head.appendChild(expand);
   head.appendChild(close);
+
+  const tabs = el('div', 'dshd-browser-tabs');
+  const tabList = el('div', 'dshd-browser-tab-list');
+  tabList.setAttribute('role', 'tablist');
+  const newTab = toolButton('+', 'dshd-tab-new', '新建标签页（Ctrl+T）');
+  tabs.appendChild(tabList);
+  tabs.appendChild(newTab);
 
   const chrome = el('div', 'dshd-browser-chrome');
   const resizeRail = el('div', 'dshd-browser-resize-rail');
@@ -1119,23 +1171,79 @@ function makeToolShell() {
   address.type = 'text';
   address.value = browserUrl;
   address.setAttribute('aria-label', '网址');
-  const open = toolButton('打开', '');
+  const findButton = toolButton('⌕', '', '在页面中查找（Ctrl+F）');
+  const zoom = toolButton('100%', '', '页面缩放：Ctrl++ / Ctrl+- / Ctrl+0');
+  zoom.style.fontSize = '10px';
+  const external = toolButton('↗', '', '在系统浏览器中打开');
   chrome.appendChild(back);
   chrome.appendChild(forward);
   chrome.appendChild(reload);
   chrome.appendChild(address);
-  chrome.appendChild(open);
+  chrome.appendChild(findButton);
+  chrome.appendChild(zoom);
+  chrome.appendChild(external);
+
+  const findBar = el('div', 'dshd-browser-find');
+  const findInput = el('input', '');
+  findInput.type = 'text';
+  findInput.placeholder = '在页面中查找';
+  const findCount = el('span', '', '0/0');
+  const findPrevious = toolButton('↑', '', '上一个匹配项');
+  const findNext = toolButton('↓', '', '下一个匹配项');
+  const closeFind = toolButton('×', '', '关闭查找');
+  findBar.appendChild(findInput);
+  findBar.appendChild(findCount);
+  findBar.appendChild(findPrevious);
+  findBar.appendChild(findNext);
+  findBar.appendChild(closeFind);
+  const progress = el('div', 'dshd-browser-progress');
 
   shell.appendChild(head);
+  shell.appendChild(tabs);
   shell.appendChild(chrome);
+  shell.appendChild(findBar);
+  shell.appendChild(progress);
   shell.appendChild(resizeRail);
   document.body.appendChild(launcher);
   document.body.appendChild(shell);
   toolsLauncher = launcher;
   toolsShell = shell;
 
+  const renderTabs = () => {
+    tabList.replaceChildren();
+    for (const tab of browserState.tabs || []) {
+      const item = el('div', `dshd-browser-tab${tab.id === browserState.activeTabId ? ' active' : ''}${tab.loading ? ' loading' : ''}`);
+      item.setAttribute('role', 'tab');
+      item.setAttribute('aria-selected', String(tab.id === browserState.activeTabId));
+      item.title = tab.title || tab.url || '新标签';
+      let icon;
+      if (tab.favicon) {
+        icon = document.createElement('img');
+        icon.src = tab.favicon;
+        icon.alt = '';
+        icon.className = 'dshd-tab-icon';
+      } else {
+        icon = el('span', 'dshd-tab-icon', tab.loading ? '◌' : '◫');
+      }
+      const tabTitle = el('span', 'dshd-tab-title', tab.title || '新标签');
+      const tabClose = toolButton('×', 'dshd-tab-close', '关闭标签页');
+      item.appendChild(icon);
+      item.appendChild(tabTitle);
+      item.appendChild(tabClose);
+      item.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:tab-switch', tab.id)));
+      tabClose.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        updateBrowserState(await ipcRenderer.invoke('browser:tab-close', tab.id));
+      });
+      tabList.appendChild(item);
+    }
+    const active = tabList.querySelector('.active');
+    if (active) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+
   const updateBrowserState = (nextState) => {
-    browserState = nextState || { open: false };
+    if (nextState && nextState.ok === false) return;
+    browserState = nextState || { open: false, tabs: [] };
     if (browserState.url && /^https?:/i.test(browserState.url)) {
       browserUrl = browserState.url;
       address.value = browserUrl;
@@ -1143,13 +1251,19 @@ function makeToolShell() {
     back.disabled = !browserState.canGoBack;
     forward.disabled = !browserState.canGoForward;
     const loading = Boolean(browserState.loading);
+    progress.classList.toggle('loading', loading);
     meta.classList.toggle('loading', loading);
     meta.classList.toggle('error', Boolean(browserState.error));
     meta.textContent = browserState.error || (loading ? '正在加载…' : (browserState.title || '隔离网页内容'));
     meta.title = browserState.url || '';
+    localBadge.classList.toggle('visible', /^http:\/\/127\.0\.0\.1:\d+\/.+\.html?(?:[?#]|$)/i.test(browserState.url || ''));
+    zoom.textContent = `${Math.round((browserState.zoomFactor || 1) * 100)}%`;
+    const result = browserState.findResult;
+    findCount.textContent = result && result.matches ? `${result.activeMatchOrdinal || 0}/${result.matches}` : '0/0';
+    renderTabs();
   };
 
-  const setMode = async (mode, nextUrl) => {
+  const setMode = async (mode, nextUrl, options = {}) => {
     if (mode !== 'browser') return;
     toolMode = 'browser';
     if (nextUrl) browserUrl = nextUrl;
@@ -1157,7 +1271,10 @@ function makeToolShell() {
     shell.hidden = false;
     launcher.hidden = true;
     setToolsLayout();
-    const result = await ipcRenderer.invoke('browser:open', browserUrl);
+    let result;
+    if (nextUrl) result = await ipcRenderer.invoke(options.newTab ? 'browser:tab-new' : 'browser:open', browserUrl);
+    else if (browserState.open) result = await ipcRenderer.invoke('browser:show');
+    else result = await ipcRenderer.invoke('browser:open', browserUrl);
     setToolsLayout();
     if (!result || !result.ok) {
       meta.classList.remove('loading');
@@ -1168,10 +1285,10 @@ function makeToolShell() {
     return result;
   };
 
-  openBrowserPanel = (nextUrl) => {
+  openBrowserPanel = (nextUrl, options = {}) => {
     const pluginPanel = document.getElementById('dshd-plugin-center');
     if (pluginPanel) pluginPanel.hidden = true;
-    return setMode('browser', nextUrl);
+    return setMode('browser', nextUrl, options);
   };
 
   const closeTools = async () => {
@@ -1216,27 +1333,78 @@ function makeToolShell() {
   launchPlugins.addEventListener('click', () => { if (openPluginCenter) openPluginCenter(); });
 
   const navigate = () => setMode('browser', address.value.trim() || DEFAULT_BROWSER_URL);
+  const runFind = (forward = true, findNextMatch = false) => {
+    ipcRenderer.invoke('browser:find', findInput.value, { forward, findNext: findNextMatch }).then(updateBrowserState);
+  };
+  const showFind = () => {
+    shell.classList.add('find-open');
+    setToolsLayout();
+    findInput.focus();
+    findInput.select();
+  };
+  const hideFind = async () => {
+    shell.classList.remove('find-open');
+    setToolsLayout();
+    updateBrowserState(await ipcRenderer.invoke('browser:find-stop', 'clearSelection'));
+  };
 
   launchBrowser.addEventListener('click', () => {
     if (toolMode === 'browser' && !shell.hidden) closeTools();
-    else openBrowserPanel(browserUrl);
+    else openBrowserPanel();
   });
   close.addEventListener('click', closeTools);
-  open.addEventListener('click', navigate);
   address.addEventListener('keydown', (event) => { if (event.key === 'Enter') navigate(); });
   back.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:back')));
   forward.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:forward')));
   reload.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:reload')));
+  newTab.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:tab-new', DEFAULT_BROWSER_URL)));
+  findButton.addEventListener('click', showFind);
+  findInput.addEventListener('input', () => runFind(true, false));
+  findInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') runFind(!event.shiftKey, true);
+    if (event.key === 'Escape') hideFind();
+  });
+  findPrevious.addEventListener('click', () => runFind(false, true));
+  findNext.addEventListener('click', () => runFind(true, true));
+  closeFind.addEventListener('click', hideFind);
+  zoom.addEventListener('click', async () => updateBrowserState(await ipcRenderer.invoke('browser:zoom', 0)));
+  external.addEventListener('click', () => ipcRenderer.invoke('browser:open-external'));
   window.addEventListener('resize', setToolsLayout);
   ipcRenderer.on('browser:state', (_event, nextState) => updateBrowserState(nextState));
   ipcRenderer.on('browser:request-open', (_event, url) => {
-    if (/^https?:\/\//i.test(String(url || ''))) openBrowserPanel(url).catch(() => {});
+    if (/^https?:\/\//i.test(String(url || ''))) openBrowserPanel(url, { newTab: Boolean(browserState.open) }).catch(() => {});
+  });
+  window.addEventListener('message', async (event) => {
+    const data = event.data;
+    if (event.source !== window || event.origin !== window.location.origin || !data || data.type !== 'dsh-desktop-preview-path-v1') return;
+    if (typeof data.path !== 'string' || !/\.html?$/i.test(data.path.trim())) return;
+    const preview = await ipcRenderer.invoke('preview:open', data.path);
+    if (preview && preview.ok) openBrowserPanel(preview.url, { newTab: Boolean(browserState.open) }).catch(() => {});
   });
   window.addEventListener('keydown', (event) => {
     if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'b') {
       event.preventDefault();
       if (toolMode === 'browser' && !shell.hidden) closeTools();
-      else openBrowserPanel(browserUrl);
+      else openBrowserPanel();
+      return;
+    }
+    if (shell.hidden || !event.ctrlKey || event.altKey || event.metaKey) return;
+    const key = event.key.toLowerCase();
+    if (key === 'f') { event.preventDefault(); showFind(); }
+    else if (key === 'l') { event.preventDefault(); address.focus(); address.select(); }
+    else if (key === 't') { event.preventDefault(); newTab.click(); }
+    else if (key === 'w' && browserState.activeTabId) {
+      event.preventDefault();
+      ipcRenderer.invoke('browser:tab-close', browserState.activeTabId).then(updateBrowserState);
+    } else if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      ipcRenderer.invoke('browser:zoom', 0.1).then(updateBrowserState);
+    } else if (event.key === '-') {
+      event.preventDefault();
+      ipcRenderer.invoke('browser:zoom', -0.1).then(updateBrowserState);
+    } else if (event.key === '0') {
+      event.preventDefault();
+      ipcRenderer.invoke('browser:zoom', 0).then(updateBrowserState);
     }
   });
   setToolsLayout();

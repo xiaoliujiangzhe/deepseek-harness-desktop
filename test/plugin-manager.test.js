@@ -5,7 +5,18 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { compatibilityOf, formatPluginFailure, isBundleManifest, listInstalled, validatePackageName } = require('../src/plugin-manager');
+const {
+  compatibilityOf,
+  formatPluginFailure,
+  isBundleManifest,
+  listInstalled,
+  marketplaceCacheFile,
+  resetMarketplaceCache,
+  resolveGitHubCandidate,
+  searchMarketplace,
+  validateGitHubManifest,
+  validatePackageName
+} = require('../src/plugin-manager');
 
 test('accepts package names and rejects command-like plugin specs', () => {
   assert.equal(validatePackageName('@scope/dsh-plugin-demo'), true);
@@ -50,4 +61,71 @@ test('lists profile-managed plugin dependencies', (t) => {
 
   assert.equal(listInstalled(home)[0].activeBundle, true);
   assert.equal(listInstalled(home)[0].version, '1.0.0');
+});
+
+test('downloads the marketplace once and filters later searches from memory', async (t) => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-market-home-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  resetMarketplaceCache();
+  let requests = 0;
+  const requestJson = async () => {
+    requests += 1;
+    return { plugins: [{ name: 'Whale Widget', owner: 'demo', url: 'https://github.com/demo/whale', description: 'balance whale' }] };
+  };
+  const first = await searchMarketplace('whale', { home, requestJson, now: () => 1000 });
+  const second = await searchMarketplace('balance', { home, requestJson, now: () => 1001 });
+  assert.equal(requests, 1);
+  assert.equal(first.catalog.source, 'network');
+  assert.equal(second.catalog.source, 'memory');
+  assert.equal(second.items[0].installSpec, 'github:demo/whale');
+});
+
+test('uses an existing disk catalog without another network request', async (t) => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-market-disk-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const file = marketplaceCacheFile(home);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({
+    version: 1,
+    registryUrl: 'https://example.test/plugins.json',
+    cachedAt: 5000,
+    data: { plugins: [{ name: 'Demo', npm: 'dsh-demo', description: 'cached' }] }
+  }));
+  resetMarketplaceCache();
+  const result = await searchMarketplace('', {
+    home,
+    registryUrl: 'https://example.test/plugins.json',
+    now: () => 5001,
+    requestJson: async () => { throw new Error('network should not be used'); }
+  });
+  assert.equal(result.catalog.source, 'disk');
+  assert.equal(result.items[0].installSpec, 'dsh-demo');
+});
+
+test('accepts a built GitHub bundle and rejects lifecycle scripts or unsafe paths', () => {
+  const valid = {
+    name: 'dsh-whale-widget',
+    version: '0.2.9',
+    main: 'lib/index.js',
+    dsh: { bundle: { patch: './cordis.patch.yml' } }
+  };
+  assert.deepEqual(validateGitHubManifest(valid), {
+    name: 'dsh-whale-widget',
+    version: '0.2.9',
+    patch: 'cordis.patch.yml',
+    entries: ['lib/index.js']
+  });
+  assert.throws(() => validateGitHubManifest({ ...valid, scripts: { prepare: 'npm run build' } }), /安装构建脚本/);
+  assert.throws(() => validateGitHubManifest({ ...valid, main: '../outside.js' }), /路径不安全/);
+});
+
+test('requires GitHub to resolve an exact 40-character commit', async () => {
+  await assert.rejects(() => resolveGitHubCandidate({
+    source: 'github',
+    installSpec: 'github:demo/plugin',
+    repositoryUrl: 'https://github.com/demo/plugin'
+  }, {
+    requestJson: async () => ({ sha: 'main' }),
+    requestBuffer: async () => Buffer.from('{}')
+  }), /40 位 commit SHA/);
 });

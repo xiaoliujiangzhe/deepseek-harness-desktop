@@ -23,8 +23,9 @@ DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CL
 - **共享数据**：不覆盖 `DSH_HOME`，会话/配置与命令行版本共用 `~/.dsh`。
 - **读条特效**：启动画面用真实阶段驱动进度（解析环境 → 启动服务 → 端口绑定 → HTTP 探测 → 就绪），百分比做缓动动画、渐变进度条带流光扫过特效。
 - **系统托盘**：关窗不退出，缩到托盘、服务常驻；单击托盘图标切换显示/隐藏，右键菜单可「显示 / 打开工作目录 / 退出」。单实例：重复双击快捷方式只唤起已有窗口。
-- **C 版分屏工作台**：保留 DSH 对话为主视图，右侧只显示内置浏览器。浏览器使用隔离的 Electron `WebContentsView`，不会自动打开系统浏览器，也不注入 DSH preload；聊天中的外部网页链接会直接在右侧打开。
-- **插件中心**：位于主界面工具栏的独立侧边工作台，不改动 Harness 原生「插件」页；使用 dsh-market 同源的 `awesome-dsh-plugin` curated 目录，支持按名称、分类和关键词搜索，优先从 npm tarball 安装，GitHub 源码包作为目录明确声明的后备来源。安装前备份 web profile，安装过程在对应插件卡片内显示进度和可读错误。
+- **C 版分屏工作台**：保留 DSH 对话为主视图，右侧使用隔离的 Electron `WebContentsView` 提供多标签浏览器。支持拖动宽度、前进/后退、刷新、页内查找、缩放和外部打开；聊天中的外部网页链接会直接在右侧打开。
+- **本地 HTML 预览**：点击会话中的 `.html` / `.htm` 文件引用，会在右侧工作台启动仅监听本机的临时预览服务。JS、CSS、图片等相对资源可正常加载，保存文件后页面自动刷新。
+- **插件中心**：位于主界面工具栏的独立侧边工作台，不改动 Harness 原生「插件」页；使用 dsh-market 同源的 `awesome-dsh-plugin` curated 目录。目录缓存 6 小时，后续搜索直接在本地过滤。npm 成品包可直接安装；GitHub 来源会先锁定 commit，并校验 package manifest、bundle patch、成品入口和生命周期脚本，仅允许无需现场构建的成品源码。安装前备份 web profile，失败自动恢复。
 - **主界面皮肤（外观自定义）**：集成进 Harness 网页自己的「设置 → 通用设置」里，新增一个「桌面外观」区块，可**上传图片当背景**、调背景模糊/变暗、改字体字号、布局密度、强调色，并支持**自定义 CSS**，保存后实时生效。深浅色模式在 Harness 设置里切换。
 - **DeepSeek 原生多模态**：Harness `0.1.1-rc.2` 内置 `deepseek-v4-flash-vision-exp`，可直接向 DeepSeek 官方路由发送图片，不再依赖桌面项目的识图兜底补丁。
 - **可恢复升级**：检测到旧 Harness 插件目录时先改名备份，再由新 CLI 重建；`sessions`、`attachments`、`settings.yaml`、`.credentials.yaml` 和 `cordis.patch.yml` 不参与迁移。
@@ -36,7 +37,8 @@ DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CL
 src/
   main.js        Electron 主进程（窗口、生命周期、单实例、IPC）
   server.js      服务管理器（定位 Node、spawn dsh web、就绪探测）
-  embedded-browser.js  隔离内置浏览器视图（HTTP/HTTPS、下载、权限策略）
+  embedded-browser.js  隔离多标签浏览器视图（导航、查找、缩放、权限策略）
+  local-preview-server.js  本地 HTML 预览、资源限制与自动刷新
   plugin-manager.js    GitHub 插件索引与官方 DSH plugin 命令适配
   preload.js     启动画面 IPC 桥
   loading.html   启动画面
@@ -54,7 +56,7 @@ vendor-patches/   已退役的历史识图补丁存档
 
 - Node.js ≥ 18（构建机当前固定使用 v24.18.0；安装包运行不要求用户预装 Node）
 - npm（默认走 `registry.npmmirror.com`，见 `.npmrc`）
-- 插件中心安装第三方插件需要 `pnpm`；没有 pnpm 时浏览和对话仍可正常使用
+- 安装包已携带 Node.js 和 pnpm；最终用户无需预装 Node、npm 或 pnpm
 
 ## 安装与运行
 
@@ -89,7 +91,7 @@ npm run runtime:node # 将构建机 Node v24.18.0 暂存为安装包运行时
 npm run dist:win   # electron-builder → release/ 下的 NSIS 安装包
 ```
 
-`dist:win` 会在打包前运行 Harness 校验、便携 Node 暂存和官方鲸鱼图标生成。`runtime/node/node.exe` 被 `.gitignore` 忽略，不应提交到 GitHub；安装包会把它放进 `resources/runtime/node/node.exe`。`runtime/node/runtime.json` 只记录本机构建时的版本和 SHA256，发布前应在干净 Windows x64 环境再验证一次。
+`dist:win` 会在打包前运行 Harness 校验、便携 Node 暂存和官方鲸鱼图标生成。`runtime/node/node.exe` 被 `.gitignore` 忽略，不应提交到 GitHub；安装包会把它放进 `resources/runtime/node/node.exe`，并将锁定的 pnpm 放进 `resources/runtime/pnpm`。构建后的自动验收会分别启动 DSH、Node 和 pnpm；发布前仍应在干净 Windows x64 环境再验证一次。
 
 ## 配置
 

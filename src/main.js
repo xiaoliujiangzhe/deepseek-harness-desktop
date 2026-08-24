@@ -1,14 +1,15 @@
 'use strict';
 
-const { app, BrowserWindow, WebContentsView, ipcMain, shell, dialog, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, shell, dialog, Tray, Menu, nativeImage, net } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { startService, resolveDshVersion } = require('./server');
 const { checkLatest } = require('./update');
 const { migrateHarnessHome } = require('./harness-migration');
-const { EmbeddedBrowser } = require('./embedded-browser');
-const { listInstalled, runPluginCommand, searchMarketplace } = require('./plugin-manager');
+const { EmbeddedBrowser, normalizeBrowserUrl } = require('./embedded-browser');
+const { LocalPreviewServer } = require('./local-preview-server');
+const { installMarketplacePlugin, listInstalled, runPluginCommand, searchMarketplace } = require('./plugin-manager');
 
 const APP_NAME = 'DeepSeek Harness';
 const LOADING_WINDOW_SIZE = { width: 480, height: 340 };
@@ -23,6 +24,70 @@ let cleanedUp = false;
 let currentWorkspace = null;
 let embeddedBrowser = null;
 let pluginOperation = null;
+let localPreview = null;
+
+async function fetchDesktopBuffer(url, headers = {}, options = {}) {
+  const timeoutMs = Number(options.timeoutMs) || 15000;
+  const maxBytes = Number(options.maxBytes) || 5 * 1024 * 1024;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await net.fetch(url, {
+      headers: { 'user-agent': 'deepseek-harness-desktop', ...headers },
+      signal: controller.signal
+    });
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 240);
+      throw new Error(`HTTP ${response.status}: ${detail}`);
+    }
+    const declared = Number(response.headers.get('content-length')) || 0;
+    if (declared > maxBytes) throw new Error(`下载内容超过 ${Math.ceil(maxBytes / 1024 / 1024)} MB 限制`);
+    if (!response.body) return Buffer.from(await response.arrayBuffer());
+    const reader = response.body.getReader();
+    const chunks = [];
+    let size = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        controller.abort();
+        throw new Error(`下载内容超过 ${Math.ceil(maxBytes / 1024 / 1024)} MB 限制`);
+      }
+      chunks.push(Buffer.from(value));
+    }
+    return Buffer.concat(chunks);
+  } catch (error) {
+    if (controller.signal.aborted && error && error.name === 'AbortError') {
+      throw new Error(`网络请求超过 ${Math.ceil(timeoutMs / 1000)} 秒`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function desktopRequestBuffer(url, headers = {}, options = {}) {
+  const attempts = Number(options.attempts) || 3;
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetchDesktopBuffer(url, headers, options);
+    } catch (error) {
+      lastError = error;
+      const message = error && error.message ? error.message : String(error);
+      const retryable = /429|ECONNRESET|ETIMEDOUT|fetch failed|network|网络请求超过/i.test(message);
+      if (!retryable || attempt === attempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    }
+  }
+  throw lastError;
+}
+
+async function desktopRequestJson(url, headers = {}, options = {}) {
+  const body = await desktopRequestBuffer(url, headers, options);
+  return JSON.parse(body.toString('utf8'));
+}
 
 // Required on Windows for correct tray-icon / taskbar grouping.
 app.setAppUserModelId('com.dsh.desktop');
@@ -204,6 +269,38 @@ function createMainWindow(url) {
     }
   });
 
+  // Harness resolves file references to absolute paths immediately before it
+  // calls host.openPath. Capture only HTML opens in the page's main world so
+  // the desktop shell can preview the exact file instead of guessing a cwd.
+  const installHtmlPreviewBridge = () => {
+    const script = `(() => {
+      if (window.__dshDesktopHtmlPreviewBridge) return;
+      window.__dshDesktopHtmlPreviewBridge = true;
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        try {
+          const requestUrl = new URL(typeof input === 'string' || input instanceof URL ? input : input.url, location.href);
+          const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+          if (method === 'POST' && requestUrl.origin === location.origin && requestUrl.pathname === '/api/host.openPath') {
+            const body = init && typeof init.body === 'string' ? JSON.parse(init.body) : null;
+            const file = body && body.method === 'host.openPath' && body.payload && body.payload.path;
+            if (typeof file === 'string' && /\\.html?$/i.test(file.trim())) {
+              window.postMessage({ type: 'dsh-desktop-preview-path-v1', path: file }, location.origin);
+              return new Response(JSON.stringify({
+                type: 'server-response',
+                rpcId: body.rpcId,
+                result: { ok: true, value: { opened: true } }
+              }), { status: 200, headers: { 'content-type': 'application/json' } });
+            }
+          }
+        } catch {}
+        return nativeFetch(input, init);
+      };
+    })()`;
+    mainWindow.webContents.executeJavaScript(script).catch(() => {});
+  };
+  mainWindow.webContents.on('did-finish-load', installHtmlPreviewBridge);
+
   // Lock the window title. The dsh web UI rewrites `document.title` to
   // "<session title> — DeepSeek Harness"; keep our clean app title instead.
   mainWindow.on('page-title-updated', (event) => {
@@ -376,7 +473,10 @@ ipcMain.handle('update:check', async () => {
 // --- IPC for desktop plugin management ---
 ipcMain.handle('plugins:list', () => ({ ok: true, items: listInstalled() }));
 ipcMain.handle('plugins:search', async (_event, query) => {
-  try { return { ok: true, items: await searchMarketplace(query) }; }
+  try {
+    const result = await searchMarketplace(query, { requestJson: desktopRequestJson });
+    return { ok: true, ...result };
+  }
   catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
 });
 
@@ -388,7 +488,16 @@ async function mutatePlugin(action, spec) {
   finally { pluginOperation = null; }
 }
 
-ipcMain.handle('plugins:install', (_event, spec) => mutatePlugin('add', spec));
+ipcMain.handle('plugins:install', async (_event, item) => {
+  if (pluginOperation) return { ok: false, message: '另一个插件操作正在进行' };
+  pluginOperation = installMarketplacePlugin(item, {
+    requestJson: desktopRequestJson,
+    requestBuffer: desktopRequestBuffer
+  });
+  try { return { ok: true, ...(await pluginOperation) }; }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+  finally { pluginOperation = null; }
+});
 ipcMain.handle('plugins:remove', (_event, name) => mutatePlugin('remove', name));
 ipcMain.handle('desktop:restart', () => {
   app.relaunch();
@@ -398,6 +507,7 @@ ipcMain.handle('desktop:restart', () => {
 
 // --- IPC for the isolated embedded browser ---
 ipcMain.handle('browser:state', () => embeddedBrowser ? embeddedBrowser.state() : { open: false });
+ipcMain.handle('browser:show', () => embeddedBrowser ? embeddedBrowser.show() : { open: false });
 ipcMain.handle('browser:open', async (_event, url) => {
   try {
     if (!embeddedBrowser) throw new Error('桌面浏览器尚未初始化');
@@ -405,6 +515,17 @@ ipcMain.handle('browser:open', async (_event, url) => {
   }
   catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
 });
+ipcMain.handle('browser:tab-new', async (_event, url) => {
+  try {
+    if (!embeddedBrowser) throw new Error('桌面浏览器尚未初始化');
+    return { ok: true, ...(await embeddedBrowser.open(url, { newTab: true })) };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('browser:tab-switch', (_event, id) => {
+  try { return { ok: true, ...embeddedBrowser.switchTab(String(id || '')) }; }
+  catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
+ipcMain.handle('browser:tab-close', (_event, id) => embeddedBrowser ? embeddedBrowser.closeTab(String(id || '')) : { open: false, tabs: [] });
 ipcMain.handle('browser:layout', (_event, bounds) => {
   if (!embeddedBrowser) return { ok: false };
   embeddedBrowser.layout(bounds || {});
@@ -413,8 +534,29 @@ ipcMain.handle('browser:layout', (_event, bounds) => {
 ipcMain.handle('browser:back', () => embeddedBrowser ? embeddedBrowser.back() : { open: false });
 ipcMain.handle('browser:forward', () => embeddedBrowser ? embeddedBrowser.forward() : { open: false });
 ipcMain.handle('browser:reload', () => embeddedBrowser ? embeddedBrowser.reload() : { open: false });
+ipcMain.handle('browser:find', (_event, query, options) => embeddedBrowser ? embeddedBrowser.find(query, options || {}) : { open: false });
+ipcMain.handle('browser:find-stop', (_event, action) => embeddedBrowser ? embeddedBrowser.stopFind(action) : { open: false });
+ipcMain.handle('browser:zoom', (_event, delta) => embeddedBrowser ? embeddedBrowser.zoom(Number(delta)) : { open: false });
+ipcMain.handle('browser:open-external', async () => {
+  const state = embeddedBrowser ? embeddedBrowser.state() : { url: '' };
+  try {
+    const url = normalizeBrowserUrl(state.url);
+    await shell.openExternal(url);
+    return { ok: true };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
 ipcMain.handle('browser:hide', () => embeddedBrowser ? embeddedBrowser.hide() : { open: false });
 ipcMain.handle('browser:close', () => embeddedBrowser ? embeddedBrowser.close() : { open: false });
+ipcMain.handle('preview:open', async (_event, file) => {
+  try {
+    if (!currentWorkspace) throw new Error('当前工作区尚未初始化');
+    if (!localPreview || localPreview.workspace !== path.resolve(currentWorkspace)) {
+      if (localPreview) await localPreview.stop();
+      localPreview = new LocalPreviewServer(currentWorkspace);
+    }
+    return { ok: true, url: await localPreview.previewUrl(file), file: String(file || '') };
+  } catch (error) { return { ok: false, message: error && error.message ? error.message : String(error) }; }
+});
 
 // --- App lifecycle ---
 
@@ -439,10 +581,13 @@ if (!gotLock) {
   });
 
   app.on('will-quit', (event) => {
-    if (service && !cleanedUp) {
+    if ((service || localPreview) && !cleanedUp) {
       event.preventDefault();
       cleanedUp = true;
-      service.stop().then(() => app.quit());
+      Promise.all([
+        service ? service.stop() : Promise.resolve(),
+        localPreview ? localPreview.stop() : Promise.resolve()
+      ]).then(() => app.quit());
     }
   });
 

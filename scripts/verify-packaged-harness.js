@@ -20,10 +20,14 @@ const dshBin = path.join(
 );
 const portableNode = path.join(resources, 'runtime', 'node', process.platform === 'win32' ? 'node.exe' : 'node');
 const portableManifest = path.join(resources, 'runtime', 'node', 'runtime.json');
+const portablePnpm = path.join(resources, 'runtime', 'pnpm', process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm');
+const portablePnpmEntry = path.join(resources, 'runtime', 'pnpm', 'package', 'bin', 'pnpm.cjs');
 
 assert.ok(fs.existsSync(dshBin), `打包后的 DSH CLI 不存在：${dshBin}`);
 assert.ok(fs.existsSync(portableNode), `打包后的便携 Node 不存在：${portableNode}`);
 assert.ok(fs.existsSync(portableManifest), `打包后的便携 Node 清单不存在：${portableManifest}`);
+assert.ok(fs.existsSync(portablePnpm), `打包后的便携 pnpm 不存在：${portablePnpm}`);
+assert.ok(fs.existsSync(portablePnpmEntry), `打包后的便携 pnpm 入口不存在：${portablePnpmEntry}`);
 
 const runtimeInfo = JSON.parse(fs.readFileSync(portableManifest, 'utf8'));
 const portableVersion = execFileSync(portableNode, ['--version'], {
@@ -33,6 +37,14 @@ const portableVersion = execFileSync(portableNode, ['--version'], {
   timeout: 10_000
 }).trim();
 assert.equal(portableVersion, runtimeInfo.version, `打包后的便携 Node 版本不一致：清单 ${runtimeInfo.version}，实际 ${portableVersion}`);
+
+const portablePnpmVersion = execFileSync(portableNode, [portablePnpmEntry, '--version'], {
+  cwd: unpackedRoot,
+  encoding: 'utf8',
+  windowsHide: true,
+  timeout: 30_000
+}).trim();
+assert.equal(portablePnpmVersion, desktopPackage.devDependencies.pnpm, `打包后的便携 pnpm 版本不一致：期望 ${desktopPackage.devDependencies.pnpm}，实际 ${portablePnpmVersion}`);
 
 let actualVersion;
 try {
@@ -60,3 +72,4 @@ assert.equal(
 
 console.log(`打包产物校验通过：Harness ${actualVersion}`);
 console.log(`打包产物校验通过：便携 Node ${portableVersion}`);
+console.log(`打包产物校验通过：便携 pnpm ${portablePnpmVersion}`);

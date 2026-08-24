@@ -1,12 +1,13 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "DeepSeek Harness desktop shell with a split embedded browser, guarded plugin center, portable Node runtime, and native startup workspace.",
   "author": "DSH Desktop",
   "license": "MIT",
   "main": "src/main.js",
   "scripts": {
     "image:whale-girl": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-whale-girl.ps1",
+    "verify:plugin-github": "electron scripts/verify-github-plugin-install.js",
     "verify:harness": "node scripts/verify-harness-version.js",
     "runtime:node": "node scripts/stage-portable-node.js",
     "icon:build": "electron scripts/render-brand-assets.js",
@@ -45,7 +46,8 @@
   },
   "devDependencies": {
     "electron": "^35.0.0",
-    "electron-builder": "^26.0.0"
+    "electron-builder": "^26.0.0",
+    "pnpm": "11.21.0"
   },
   "build": {
     "appId": "com.dsh.desktop",
@@ -69,6 +71,20 @@
           "node.exe",
           "runtime.json"
         ]
+      },
+      {
+        "from": "node_modules/pnpm",
+        "to": "runtime/pnpm/package",
+        "filter": [
+          "bin/**/*",
+          "dist/**/*",
+          "LICENSE",
+          "package.json"
+        ]
+      },
+      {
+        "from": "scripts/pnpm-runtime.cmd",
+        "to": "runtime/pnpm/pnpm.cmd"
       }
     ],
     "directories": {
