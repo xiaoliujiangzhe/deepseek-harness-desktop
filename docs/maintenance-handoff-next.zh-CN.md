@@ -1,10 +1,20 @@
-# DSH Desktop 0.5.0 维护交接记录
+# DSH Desktop 0.5.1 维护交接记录
 
 日期：2026-08-25
 
 ## 状态
 
-本文记录 `v0.5.0` 的开发和发布内容。它是在已发布 `v0.4.0` 基础上新增的内置文件编辑功能。
+本文保留 `v0.5.0` 的内置文件编辑器发布信息，并记录 `v0.5.1` 新增的通用对话功能。
+
+## v0.5.1：通用对话
+
+- `src/general-chat.js` 在 Electron `userData/general-chat` 下维护一个桌面端私有目录；该目录用于兼容 Harness 当前“会话必须选择 Workspace”的 Web UI 流程，不代表用户主动选择了项目。
+- `src/main.js` 通过受限 IPC 只返回上述固定目录和“通用对话”标题，不接受 renderer 传入任意路径。
+- `src/preload-main.js` 在侧栏“新会话”下方增加一级“通用对话”入口。点击后通过本机 `/api` 依次幂等注册 Workspace、固定显示名、创建 Session，并写入 Harness 已有的 `dsh.sessions.current` 选择状态后重新载入。
+- 通用 Workspace 在侧栏按工作区分组视图中隐藏，只由一级入口创建；对话区仍显示“通用对话”，让用户知道当前不是某个真实项目。
+- 私有目录首次创建时写入 `AGENTS.md`：未获用户明确要求时不操作该目录文件；任务需要已有项目时先提示切换工作区。已有文件不覆盖。
+- 当前仍复用 Harness 标准 Agent preset 和 `Workspace Write` 权限，属于“无须用户选择项目”的通用入口，不是技术上 `cwd = undefined` 的裸 Session。若以后要从协议层禁用文件/终端工具，应新增专用 Agent preset，而不是只靠界面隐藏。
+- 已知边界：侧栏切换为扁平会话视图后，通用对话产生的会话仍可能进入统一会话列表；分组视图会保持独立入口。后续若要彻底隔离，需要官方 Client Runtime 提供按 Workspace 分类/过滤的扩展点。
 
 ## 内置文件编辑器
 
@@ -33,7 +43,7 @@ npm run verify:harness
 git diff --check
 ```
 
-- 自动化测试：43 项通过。
+- 自动化测试：原 `v0.5.0` 发布验收为 43 项；加入通用对话后当前为 46 项通过。
 - Harness 校验：`0.1.1-rc.2`。
 - 隔离开发版已打开 `editor-demo.txt`，确认标签、工具栏、行号、编辑区和编码/EOL 状态出现。
 - 隔离目录：`.test-electron-user-data` 与 `.test-dsh-home-editor`，均被 `.gitignore` 排除，不修改正式 `~/.dsh`。
@@ -42,13 +52,13 @@ git diff --check
 
 ## 发布资产
 
-- 安装包：`DeepSeek-Harness-Setup-0.5.0.exe`，149,113,244 bytes，SHA256：`6B77B24C9CB775992C848172F1326C7E8D5AEA2CE04F91A42ABD52649C411A2D`。
-- blockmap：`DeepSeek-Harness-Setup-0.5.0.exe.blockmap`，155,067 bytes，SHA256：`CC3FEC2EDC54557DD4222AC2F09E60E3A7B1084EBAAA4BC2607586AD1A3E0D91`。
-- 更新元数据：`latest.yml`，361 bytes，SHA256：`31CD10E4EB8A42D02AD9802509C37AAEAF88BFC64BB09EF03C271F5DEC3FEEFC`。
-- `latest.yml` 的版本、文件名、SHA512 和文件大小均与安装包一致，可供已安装的 `0.4.0` Stable 通道检查更新。
+- 安装包：`DeepSeek-Harness-Setup-0.5.1.exe`，149,115,714 bytes，SHA256：`BB34E799F9DAB3132DEE2DCC373BE07C75232F345F80A76529BCD731A0ECE594`。
+- blockmap：`DeepSeek-Harness-Setup-0.5.1.exe.blockmap`，154,999 bytes，SHA256：`953D9249B3BB0C138B5CD67C812752078CC0D1AC28412CF5B0404D96ED65DA52`。
+- 更新元数据：`latest.yml`，361 bytes，SHA256：`7AF8C65FB390C8CE7B97A698C8F6B323EB6913042C127ABF475DCD2CF40A81BF`。
+- `latest.yml` 的版本、文件名、SHA512 和文件大小均与 `v0.5.1` 安装包一致，可供已安装的 Stable 通道检查更新。
 
 ## 下一步
 
 - 由用户人工确认输入、`Ctrl+S`、重新打开、查找、自动换行、未保存关闭提醒和外部冲突提示。
-- 版本号固定为 `0.5.0`；不要覆盖或重打已经发布的 `v0.4.0`。
-- GitHub Release 上传后，从已安装的 `0.4.0` Stable 通道执行检查、下载和“重启并安装”，完成真实升级链路验收。
+- `v0.5.0` 已发布，不覆盖原 Release；通用对话作为 `v0.5.1` 单独发布。
+- `v0.5.1` GitHub Release 上传后，从已安装的旧版 Stable 通道执行检查、下载和“重启并安装”，完成真实升级链路验收。

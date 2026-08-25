@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "DeepSeek Harness desktop shell with a split embedded browser, guarded plugin center, portable Node runtime, and native startup workspace.",
   "author": "DSH Desktop",
   "license": "MIT",

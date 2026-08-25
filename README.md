@@ -19,6 +19,7 @@ DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CL
 关键点：
 
 - **自动启动 / 自动停止**：App 启动时拉起 `dsh web`，从托盘「退出」时用 `taskkill /T /F` 清理整棵进程树。
+- **通用对话**：侧栏提供独立入口，无需先选择项目。桌面端会在自身用户数据目录维护一个隔离工作区以兼容 Harness 的 Workspace/Session 机制；需要现有项目文件时再切换到真实工作区。
 - **`--port 0`**：让系统分配空闲端口，避免与已运行的 `dsh web`（例如默认的 3080）冲突；实际端口从就绪行解析。
 - **共享数据**：不覆盖 `DSH_HOME`，会话/配置与命令行版本共用 `~/.dsh`。
 - **读条特效**：启动画面用真实阶段驱动进度（解析环境 → 启动服务 → 端口绑定 → HTTP 探测 → 就绪），百分比做缓动动画、渐变进度条带流光扫过特效。
@@ -39,6 +40,7 @@ DeepSeek Harness 的桌面版外壳。它封装官方 npm 包中的 `dsh web` CL
 ```
 src/
   main.js        Electron 主进程（窗口、生命周期、单实例、IPC）
+  general-chat.js  通用对话的私有工作区初始化与默认边界说明
   server.js      服务管理器（定位 Node、spawn dsh web、就绪探测）
   embedded-browser.js  隔离多标签浏览器视图（导航、查找、缩放、权限策略）
   diagnostics.js   运行环境检查、配置备份、安全修复与报告脱敏

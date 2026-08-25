@@ -22,6 +22,9 @@ const DEFAULTS = {
 };
 
 const ROW_ID = 'dsh-desktop-appearance-row';
+const GENERAL_CHAT_BUTTON_ID = 'dshd-general-chat';
+const GENERAL_CHAT_TITLE = '通用对话';
+const GENERAL_CHAT_SESSION_IDS_KEY = 'dshd.general-chat.sessions';
 
 // ---------- color utils ----------
 
@@ -2460,5 +2463,191 @@ function bootTools() {
   }, true);
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootTools, { once: true });
-else bootTools();
+const GENERAL_CHAT_CSS = `
+#${GENERAL_CHAT_BUTTON_ID} {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  height: 38px;
+  padding: 8px 14px;
+  margin: 0 2px 8px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  cursor: pointer;
+  overflow: hidden;
+}
+#${GENERAL_CHAT_BUTTON_ID}:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+#${GENERAL_CHAT_BUTTON_ID}[data-active="true"] {
+  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, var(--dsw-static-deepseek-450));
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+#${GENERAL_CHAT_BUTTON_ID}[data-busy="true"] {
+  cursor: wait;
+  opacity: .72;
+}
+#${GENERAL_CHAT_BUTTON_ID} .dshd-general-chat-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+#${GENERAL_CHAT_BUTTON_ID} .dshd-general-chat-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#${GENERAL_CHAT_BUTTON_ID}[data-collapsed="true"] {
+  align-self: flex-start;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0 0 12px;
+}
+#${GENERAL_CHAT_BUTTON_ID}[data-collapsed="true"] .dshd-general-chat-label {
+  display: none;
+}
+.dshd-general-workspace-group {
+  display: none !important;
+}
+`;
+
+function generalChatSessionIds() {
+  try {
+    const value = JSON.parse(localStorage.getItem(GENERAL_CHAT_SESSION_IDS_KEY) || '[]');
+    return Array.isArray(value) ? value.filter(id => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function selectedSessionId() {
+  try {
+    const value = JSON.parse(localStorage.getItem('dsh.sessions.current') || '{}');
+    return typeof value.sessionId === 'string' ? value.sessionId : '';
+  } catch {
+    return '';
+  }
+}
+
+async function generalChatRpc(method, payload) {
+  const rpcId = `dshd-general-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const response = await fetch(`/api/${method}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'client-request', rpcId, method, payload })
+  });
+  if (!response.ok) throw new Error(`本地服务返回 HTTP ${response.status}`);
+  const body = await response.json();
+  if (!body || body.rpcId !== rpcId || !body.result) throw new Error('本地服务响应格式不正确');
+  if (!body.result.ok) throw new Error(body.result.error?.message || `${method} 失败`);
+  return body.result.value;
+}
+
+async function openGeneralChat(button) {
+  if (button.dataset.busy === 'true') return;
+  button.dataset.busy = 'true';
+  const label = button.querySelector('.dshd-general-chat-label');
+  if (label) label.textContent = '正在打开…';
+  try {
+    const managed = await ipcRenderer.invoke('general-chat:workspace');
+    const created = await generalChatRpc('workspace.create', { path: managed.path });
+    const workspace = created.workspace;
+    if (!workspace || typeof workspace.workspaceId !== 'string') throw new Error('通用对话工作区创建失败');
+    if (workspace.title !== managed.title) {
+      await generalChatRpc('workspace.rename', { workspaceId: workspace.workspaceId, title: managed.title });
+    }
+    const session = await generalChatRpc('session.create', { workspaceId: workspace.workspaceId });
+    if (!session || typeof session.sessionId !== 'string') throw new Error('通用对话会话创建失败');
+    const ids = new Set(generalChatSessionIds());
+    ids.add(session.sessionId);
+    localStorage.setItem(GENERAL_CHAT_SESSION_IDS_KEY, JSON.stringify([...ids].slice(-200)));
+    localStorage.setItem('dsh.sessions.current', JSON.stringify({ sessionId: session.sessionId }));
+    location.reload();
+  } catch (error) {
+    button.dataset.busy = 'false';
+    if (label) label.textContent = GENERAL_CHAT_TITLE;
+    button.title = `打开失败：${error && error.message ? error.message : String(error)}`;
+    console.error('[dsh-desktop] general chat failed:', error);
+  }
+}
+
+function hideGeneralWorkspaceGroup(root = document) {
+  const titles = root.querySelectorAll ? root.querySelectorAll('[role="treeitem"] span') : [];
+  for (const title of titles) {
+    if (title.textContent?.trim() !== GENERAL_CHAT_TITLE) continue;
+    const tree = title.closest('[role="tree"]');
+    if (!tree) continue;
+    let group = title;
+    while (group.parentElement && group.parentElement !== tree) group = group.parentElement;
+    if (group.parentElement === tree) group.classList.add('dshd-general-workspace-group');
+  }
+}
+
+function findNativeNewSessionButton() {
+  const candidates = [...document.querySelectorAll(
+    'button[aria-label="新建会话"], button[aria-label="New session"]'
+  )];
+  return candidates.find(button => /^(?:新建会话|New Session)$/i.test(button.textContent.trim()))
+    || candidates.at(-1)
+    || null;
+}
+
+function installGeneralChatButton() {
+  if (document.getElementById(GENERAL_CHAT_BUTTON_ID)) return;
+  const nativeButton = findNativeNewSessionButton();
+  if (!nativeButton || !nativeButton.parentElement) return;
+  const button = document.createElement('button');
+  button.id = GENERAL_CHAT_BUTTON_ID;
+  button.type = 'button';
+  button.title = '新建一个不关联项目的通用对话';
+  button.setAttribute('aria-label', GENERAL_CHAT_TITLE);
+  button.innerHTML = '<svg class="dshd-general-chat-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 18.5 3.5 21l3.8-1A9 9 0 1 0 3 12c0 2.2.8 4.2 2 5.8Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="dshd-general-chat-label">通用对话</span>';
+  const ids = generalChatSessionIds();
+  button.dataset.active = String(ids.includes(selectedSessionId()));
+  button.dataset.busy = 'false';
+  nativeButton.insertAdjacentElement('afterend', button);
+  const syncCollapsed = () => { button.dataset.collapsed = String(button.parentElement.getBoundingClientRect().width < 100); };
+  syncCollapsed();
+  new ResizeObserver(syncCollapsed).observe(button.parentElement);
+  button.addEventListener('click', () => { openGeneralChat(button); });
+}
+
+function bootGeneralChat() {
+  if (!document.getElementById('dshd-general-chat-css')) {
+    const style = document.createElement('style');
+    style.id = 'dshd-general-chat-css';
+    style.textContent = GENERAL_CHAT_CSS;
+    (document.head || document.documentElement).appendChild(style);
+  }
+  const reconcile = (root = document) => {
+    installGeneralChatButton();
+    hideGeneralWorkspaceGroup(root);
+  };
+  reconcile();
+  new MutationObserver((records) => {
+    installGeneralChatButton();
+    for (const record of records) for (const node of record.addedNodes) {
+      if (node.nodeType === Node.ELEMENT_NODE) hideGeneralWorkspaceGroup(node);
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+}
+
+function bootDesktopFeatures() {
+  bootTools();
+  bootGeneralChat();
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootDesktopFeatures, { once: true });
+else bootDesktopFeatures();

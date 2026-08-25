@@ -15,7 +15,7 @@ Thumbs.db
 .pnpm-store/
 .electron-cache/
 .test-dsh-home*/
-.test-electron-user-data/
+.test-electron-*/
 .dsh-upgrade-backup/
 # 本机图片生成凭据（禁止提交或打包）
 .env.image.local
