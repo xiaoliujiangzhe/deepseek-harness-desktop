@@ -1,10 +1,26 @@
-# DSH Desktop 0.5.3 维护交接记录
+# DSH Desktop 0.5.4 维护交接记录
 
 日期：2026-08-25
 
 ## 状态
 
-本文保留 `v0.5.0` 的内置文件编辑器、`v0.5.1` 的通用对话和 `v0.5.2` 的会话恢复信息，并记录 `v0.5.3` 的桌面注入热修。
+本文保留 `v0.5.0` 的内置文件编辑器、`v0.5.1` 的通用对话、`v0.5.2` 的会话恢复和 `v0.5.3` 的桌面注入热修信息，并记录 `v0.5.4` 的多会话历史修复。
+
+## v0.5.4：通用对话历史列表
+
+- 原因：桌面端用 `display: none` 隐藏内部“通用对话”Workspace 整组节点，官方侧栏将该 Workspace 的 Session 子项渲染在同一节点内，因此多个通用对话也被一起隐藏，只剩独立一级入口可见。
+- 独立入口现改为“打开最近使用的对话 + 展开/收起历史 + 新建通用对话”三部分；内部兼容 Workspace 仍隐藏，不会重新混入普通项目列表。
+- 展开区通过官方 `session.list` 和 Workspace 的 `sessionIds` 交集列出全部非空顶级 Session，按 `updatedAt` 从新到旧排序；当前选中的空白新对话会保留，子 Agent、子会话和其他 Workspace 会话不会混入。
+- 会话过滤与安全字段整理放在主进程 `general-chat:list-sessions` 受限 IPC；沙箱 preload 仍只加载 Electron，未重新引入本地 CommonJS `require`。
+- `bootDesktopFeatures()` 继续先执行 `bootTools()` 再安装通用对话增强，并增加源码顺序测试。当前自动化共 54 项通过。
+- 已用隔离 Electron userData / DSH_HOME 进行真实窗口验证：历史区可展开；“+”可新建并选择 Session；重新加载后独立入口恢复；内部 Workspace 不显示；右侧工具栏 6 个控件持续存在。
+- 顶部原生“新会话”在通用空白 Session 上原本会呈现为无视觉变化。现在仅当通用对话被选中时接管该按钮：当前仍为空白则提示“当前已经是空白新对话”，已有内容则新建通用 Session 并在重载后提示成功；普通 Workspace 下继续走 Harness 原生行为。
+
+## 待补：鲸鱼娘表情包
+
+- 第一组已生成 6 张：正在偷吃白饭、好耶、让我想想、代码炸了、对不起嘛、什么？！
+- 透明无字版、中文字版、总览与 zip 位于 `assets/stickers/whale-girl-v1/`，生成提示词位于 `scripts/prompts/whale-girl-stickers/`。
+- “摸鱼睡觉”和“开工加油”因 APIYi 中转服务连续在约 5 分钟时断开，未伪装为完成；待图片接口稳定后继续生成并补入同一组。
 
 ## v0.5.3：沙箱 preload 热修
 
@@ -58,7 +74,7 @@ npm run verify:harness
 git diff --check
 ```
 
-- 自动化测试：原 `v0.5.0` 发布验收为 43 项，`v0.5.1` 为 46 项，`v0.5.2` 为 49 项；加入沙箱 preload 防回归覆盖后当前为 50 项通过。
+- 自动化测试：原 `v0.5.0` 发布验收为 43 项，`v0.5.1` 为 46 项，`v0.5.2` 为 49 项，`v0.5.3` 为 50 项；加入通用对话历史与启动顺序覆盖后当前为 54 项通过。
 - Harness 校验：`0.1.1-rc.2`。
 - 隔离开发版已打开 `editor-demo.txt`，确认标签、工具栏、行号、编辑区和编码/EOL 状态出现。
 - 隔离目录：`.test-electron-user-data` 与 `.test-dsh-home-editor`，均被 `.gitignore` 排除，不修改正式 `~/.dsh`。
@@ -67,13 +83,13 @@ git diff --check
 
 ## 发布资产
 
-- 安装包：`DeepSeek-Harness-Setup-0.5.3.exe`，149,116,108 bytes，SHA256：`06080900451CF44C62715DCCBF1ED3FE1A5744E8BF7E1DA4C0088A3680457376`。
-- blockmap：`DeepSeek-Harness-Setup-0.5.3.exe.blockmap`，154,873 bytes，SHA256：`2EC62F358E2868C22070E4121BE20886EBF3DEE464F0C3F6CEF41C711808BD03`。
-- 更新元数据：`latest.yml`，361 bytes，SHA256：`32266BFDC198E14C89C4C71145C880E2C7C5B576A1D996452DA48E1B5EE74A10`。
-- `latest.yml` 的版本、文件名、SHA512 和文件大小均与 `v0.5.3` 安装包一致，可供已安装的 Stable 通道检查更新。
+- 安装包：`DeepSeek-Harness-Setup-0.5.4.exe`，149,117,987 bytes，SHA256：`ED76CE61EE9FD7FEC857C603BEC2F33ED704D7DB20868E96A2B693CD17B21B6E`。
+- blockmap：`DeepSeek-Harness-Setup-0.5.4.exe.blockmap`，154,824 bytes，SHA256：`C5BEBA703FF2B4F89B50E5BDF3AA9277AF90FE83FBBCDB37664F838AA3E1A0DD`。
+- 更新元数据：`latest.yml`，361 bytes，SHA256：`B0EF6C745693F5FD26C7F168B65255C8CBFFC49597D1AA7FFFA7AC88DB8E0B76`。
+- `latest.yml` 的版本、文件名、SHA512 和文件大小均与 `v0.5.4` 安装包一致，可供已安装的 Stable 通道检查更新。
 
 ## 下一步
 
-- `v0.5.2` 用户需要从 GitHub 手动下载安装一次 `v0.5.3`；该版本的工具栏未初始化，无法使用应用内更新入口。
-- 安装 `v0.5.3` 后，确认工具栏、更新中心、内置浏览器、文件编辑器、插件中心和通用对话入口均正常。
+- `v0.5.2` 用户需要先从 GitHub 手动安装 `v0.5.3` 或更高版本；`v0.5.2` 的工具栏未初始化，无法使用应用内更新入口。
+- 从 `v0.5.3` 升级到 `v0.5.4` 后，确认工具栏、更新中心、内置浏览器、文件编辑器、插件中心和通用对话历史均正常。
 - 后续版本继续通过 Stable 通道执行检查、下载和“重启并安装”，验证应用内升级链路。

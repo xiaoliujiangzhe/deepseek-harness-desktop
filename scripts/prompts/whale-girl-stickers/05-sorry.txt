@@ -1,0 +1,8 @@
+Use case: stylized-concept
+Asset type: chat sticker
+Primary request: Recreate the exact same original chibi whale-girl mascot from the reference image apologizing with a small embarrassed bow. She clasps both hands in front, has watery puppy eyes, pink cheeks, a trembling pout, and drooping whale-fin ornaments and tail.
+Identity lock: preserve her blue bob haircut, curled ahoge, blue eyes, whale hair clip, two side whale-fin ornaments, blue-and-white sailor-inspired outfit, gold accents, and large blue whale tail.
+Style/medium: polished clean anime chibi sticker illustration, soft cel shading, crisp dark-blue outline, cute sympathetic expression.
+Composition/framing: one full character, compact centered silhouette, generous margin.
+Background: perfectly uniform flat vivid magenta chroma-key background (#ff00ff), no gradient, shadow, texture, or scenery.
+Constraints: no food, no text, letters, logo, watermark, border, speech bubble, duplicate body parts, or cropped tail.

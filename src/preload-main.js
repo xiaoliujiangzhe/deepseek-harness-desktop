@@ -23,9 +23,13 @@ const DEFAULTS = {
 
 const ROW_ID = 'dsh-desktop-appearance-row';
 const GENERAL_CHAT_BUTTON_ID = 'dshd-general-chat';
+const GENERAL_CHAT_ROOT_ID = 'dshd-general-chat-root';
+const GENERAL_CHAT_HISTORY_ID = 'dshd-general-chat-history';
 const GENERAL_CHAT_TITLE = '通用对话';
 const GENERAL_CHAT_SESSION_IDS_KEY = 'dshd.general-chat.sessions';
 const GENERAL_CHAT_LAST_SESSION_KEY = 'dshd.general-chat.last-session';
+const GENERAL_CHAT_EXPANDED_KEY = 'dshd.general-chat.expanded';
+const GENERAL_CHAT_NOTICE_KEY = 'dshd.general-chat.notice';
 
 // ---------- color utils ----------
 
@@ -2465,18 +2469,28 @@ function bootTools() {
 }
 
 const GENERAL_CHAT_CSS = `
-#${GENERAL_CHAT_BUTTON_ID} {
+#${GENERAL_CHAT_ROOT_ID} {
   flex: none;
+  width: calc(100% - 4px);
+  margin: 0 2px 8px;
+}
+.dshd-general-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+#${GENERAL_CHAT_BUTTON_ID} {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
   height: 38px;
-  padding: 8px 14px;
-  margin: 0 2px 8px;
+  padding: 8px 10px;
   box-sizing: border-box;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 8px;
   background: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
@@ -2497,6 +2511,34 @@ const GENERAL_CHAT_CSS = `
   cursor: wait;
   opacity: .72;
 }
+.dshd-general-chat-action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, var(--dsw-alias-label-primary));
+  cursor: pointer;
+}
+.dshd-general-chat-action:hover {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.dshd-general-chat-action svg {
+  width: 16px;
+  height: 16px;
+}
+.dshd-general-chat-toggle svg {
+  transition: transform .16s ease;
+}
+#${GENERAL_CHAT_ROOT_ID}[data-expanded="true"] .dshd-general-chat-toggle svg {
+  transform: rotate(90deg);
+}
 #${GENERAL_CHAT_BUTTON_ID} .dshd-general-chat-icon {
   flex: none;
   width: 18px;
@@ -2508,15 +2550,82 @@ const GENERAL_CHAT_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#${GENERAL_CHAT_BUTTON_ID}[data-collapsed="true"] {
+#${GENERAL_CHAT_HISTORY_ID} {
+  display: none;
+  max-height: 224px;
+  margin: 2px 0 2px 24px;
+  padding: 2px 0 2px 8px;
+  border-left: 1px solid var(--dsw-alias-stroke, rgba(127, 143, 166, .28));
+  overflow-y: auto;
+}
+#${GENERAL_CHAT_ROOT_ID}[data-expanded="true"] #${GENERAL_CHAT_HISTORY_ID} {
+  display: block;
+}
+.dshd-general-chat-session {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, var(--dsw-alias-label-primary));
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.dshd-general-chat-session:hover {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.dshd-general-chat-session[data-active="true"] {
+  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, var(--dsw-static-deepseek-450));
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.dshd-general-chat-session-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dshd-general-chat-empty {
+  padding: 7px 9px;
+  color: var(--dsw-alias-label-tertiary, #8a94a3);
+  font-size: 12px;
+}
+.dshd-general-chat-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 2147483646;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 16px;
+  border: 1px solid rgba(101, 153, 205, .34);
+  border-radius: 8px;
+  background: rgba(18, 40, 68, .94);
+  color: #f2f8ff;
+  box-shadow: 0 10px 28px rgba(5, 19, 38, .24);
+  font-size: 13px;
+  line-height: 20px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+#${GENERAL_CHAT_ROOT_ID}[data-collapsed="true"] {
   align-self: flex-start;
+  width: 36px;
+  margin: 0 0 12px;
+}
+#${GENERAL_CHAT_ROOT_ID}[data-collapsed="true"] #${GENERAL_CHAT_BUTTON_ID} {
   justify-content: center;
   width: 36px;
   height: 36px;
   padding: 0;
-  margin: 0 0 12px;
 }
-#${GENERAL_CHAT_BUTTON_ID}[data-collapsed="true"] .dshd-general-chat-label {
+#${GENERAL_CHAT_ROOT_ID}[data-collapsed="true"] .dshd-general-chat-label,
+#${GENERAL_CHAT_ROOT_ID}[data-collapsed="true"] .dshd-general-chat-action,
+#${GENERAL_CHAT_ROOT_ID}[data-collapsed="true"] #${GENERAL_CHAT_HISTORY_ID} {
   display: none;
 }
 .dshd-general-workspace-group {
@@ -2547,6 +2656,22 @@ function lastGeneralChatSessionId() {
   return typeof value === 'string' ? value : '';
 }
 
+function rememberGeneralChatSessions(sessionIds) {
+  const ids = [...new Set(sessionIds.filter(id => typeof id === 'string'))].slice(-200);
+  localStorage.setItem(GENERAL_CHAT_SESSION_IDS_KEY, JSON.stringify(ids));
+  return ids;
+}
+
+function showGeneralChatNotice(message) {
+  document.querySelector('.dshd-general-chat-toast')?.remove();
+  const toast = document.createElement('div');
+  toast.className = 'dshd-general-chat-toast';
+  toast.setAttribute('role', 'status');
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2600);
+}
+
 async function generalChatRpc(method, payload) {
   const rpcId = `dshd-general-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const response = await fetch(`/api/${method}`, {
@@ -2561,40 +2686,119 @@ async function generalChatRpc(method, payload) {
   return body.result.value;
 }
 
-async function openGeneralChat(button) {
+async function loadGeneralChatState() {
+  const managed = await ipcRenderer.invoke('general-chat:workspace');
+  const created = await generalChatRpc('workspace.create', { path: managed.path });
+  const workspace = created.workspace;
+  if (!workspace || typeof workspace.workspaceId !== 'string') throw new Error('通用对话工作区创建失败');
+  if (workspace.title !== managed.title) {
+    await generalChatRpc('workspace.rename', { workspaceId: workspace.workspaceId, title: managed.title });
+  }
+  const listed = await generalChatRpc('session.list', {});
+  const summaries = Array.isArray(listed?.items) ? listed.items : [];
+  const workspaceSessionIds = Array.isArray(workspace.sessionIds) ? workspace.sessionIds : [];
+  const ids = rememberGeneralChatSessions(workspaceSessionIds);
+  const selected = selectedSessionId();
+  const history = await ipcRenderer.invoke(
+    'general-chat:list-sessions', summaries, workspaceSessionIds, selected
+  );
+  return { workspace, summaries, workspaceSessionIds, ids, selected, history };
+}
+
+function selectGeneralChat(sessionId, ids = []) {
+  if (typeof sessionId !== 'string' || !sessionId) return;
+  rememberGeneralChatSessions([...ids, sessionId]);
+  localStorage.setItem(GENERAL_CHAT_LAST_SESSION_KEY, sessionId);
+  localStorage.setItem('dsh.sessions.current', JSON.stringify({ sessionId }));
+  location.reload();
+}
+
+async function openGeneralChat(button, { createNew = false } = {}) {
   if (button.dataset.busy === 'true') return;
   button.dataset.busy = 'true';
   const label = button.querySelector('.dshd-general-chat-label');
   if (label) label.textContent = '正在打开…';
   try {
-    const managed = await ipcRenderer.invoke('general-chat:workspace');
-    const created = await generalChatRpc('workspace.create', { path: managed.path });
-    const workspace = created.workspace;
-    if (!workspace || typeof workspace.workspaceId !== 'string') throw new Error('通用对话工作区创建失败');
-    if (workspace.title !== managed.title) {
-      await generalChatRpc('workspace.rename', { workspaceId: workspace.workspaceId, title: managed.title });
-    }
-    const listed = await generalChatRpc('session.list', {});
-    const restored = await ipcRenderer.invoke(
-      'general-chat:select-session',
-      Array.isArray(listed?.items) ? listed.items : [],
-      Array.isArray(workspace.sessionIds) ? workspace.sessionIds : [],
-      lastGeneralChatSessionId()
+    const state = await loadGeneralChatState();
+    const restored = createNew ? null : await ipcRenderer.invoke(
+      'general-chat:select-session', state.summaries, state.workspaceSessionIds, lastGeneralChatSessionId()
     );
-    const session = restored || await generalChatRpc('session.create', { workspaceId: workspace.workspaceId });
+    const session = restored || await generalChatRpc('session.create', { workspaceId: state.workspace.workspaceId });
     if (!session || typeof session.sessionId !== 'string') throw new Error('通用对话会话恢复失败');
-    const ids = new Set(generalChatSessionIds());
-    for (const id of Array.isArray(workspace.sessionIds) ? workspace.sessionIds : []) ids.add(id);
-    ids.add(session.sessionId);
-    localStorage.setItem(GENERAL_CHAT_SESSION_IDS_KEY, JSON.stringify([...ids].slice(-200)));
-    localStorage.setItem(GENERAL_CHAT_LAST_SESSION_KEY, session.sessionId);
-    localStorage.setItem('dsh.sessions.current', JSON.stringify({ sessionId: session.sessionId }));
-    location.reload();
+    if (createNew) localStorage.setItem(GENERAL_CHAT_NOTICE_KEY, '已新建通用对话');
+    selectGeneralChat(session.sessionId, state.ids);
   } catch (error) {
     button.dataset.busy = 'false';
     if (label) label.textContent = GENERAL_CHAT_TITLE;
     button.title = `打开失败：${error && error.message ? error.message : String(error)}`;
     console.error('[dsh-desktop] general chat failed:', error);
+  }
+}
+
+async function handleNativeNewSession(button) {
+  if (button.dataset.dshdBusy === 'true') return;
+  button.dataset.dshdBusy = 'true';
+  button.setAttribute('aria-busy', 'true');
+  try {
+    const state = await loadGeneralChatState();
+    const current = state.summaries.find(summary => summary?.sessionId === state.selected);
+    if (current?.blank) {
+      showGeneralChatNotice('当前已经是空白新对话');
+      return;
+    }
+    const session = await generalChatRpc('session.create', { workspaceId: state.workspace.workspaceId });
+    if (!session || typeof session.sessionId !== 'string') throw new Error('通用对话新建失败');
+    localStorage.setItem(GENERAL_CHAT_NOTICE_KEY, '已新建通用对话');
+    selectGeneralChat(session.sessionId, state.ids);
+  } catch (error) {
+    showGeneralChatNotice(`新建失败：${error && error.message ? error.message : String(error)}`);
+    console.error('[dsh-desktop] native new session bridge failed:', error);
+  } finally {
+    button.dataset.dshdBusy = 'false';
+    button.removeAttribute('aria-busy');
+  }
+}
+
+async function refreshGeneralChatHistory(root) {
+  const history = root.querySelector(`#${GENERAL_CHAT_HISTORY_ID}`);
+  const button = root.querySelector(`#${GENERAL_CHAT_BUTTON_ID}`);
+  if (!history || !button || root.dataset.loading === 'true') return;
+  root.dataset.loading = 'true';
+  try {
+    const state = await loadGeneralChatState();
+    button.dataset.active = String(state.ids.includes(state.selected));
+    history.replaceChildren();
+    if (!Array.isArray(state.history) || state.history.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'dshd-general-chat-empty';
+      empty.textContent = '暂无历史对话';
+      history.appendChild(empty);
+      return;
+    }
+    for (const session of state.history) {
+      if (!session || typeof session.sessionId !== 'string') continue;
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'dshd-general-chat-session';
+      item.dataset.active = String(session.sessionId === state.selected);
+      item.title = session.title;
+      const title = document.createElement('span');
+      title.className = 'dshd-general-chat-session-title';
+      title.textContent = session.title;
+      item.appendChild(title);
+      item.addEventListener('click', () => selectGeneralChat(session.sessionId, state.ids));
+      history.appendChild(item);
+    }
+  } catch (error) {
+    history.replaceChildren();
+    const empty = document.createElement('div');
+    empty.className = 'dshd-general-chat-empty';
+    empty.textContent = '历史加载失败';
+    history.appendChild(empty);
+    button.title = `历史加载失败：${error && error.message ? error.message : String(error)}`;
+    console.error('[dsh-desktop] general chat history failed:', error);
+  } finally {
+    root.dataset.loading = 'false';
   }
 }
 
@@ -2619,16 +2823,51 @@ function findNativeNewSessionButton() {
     || null;
 }
 
+function installNativeNewSessionBridge() {
+  const nativeButton = findNativeNewSessionButton();
+  if (!nativeButton || nativeButton.dataset.dshdGeneralBridge === 'true') return;
+  nativeButton.dataset.dshdGeneralBridge = 'true';
+  nativeButton.addEventListener('click', (event) => {
+    const selected = selectedSessionId();
+    if (!generalChatSessionIds().includes(selected)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    handleNativeNewSession(nativeButton);
+  }, true);
+}
+
 function installGeneralChatButton() {
-  if (document.getElementById(GENERAL_CHAT_BUTTON_ID)) return;
+  if (document.getElementById(GENERAL_CHAT_ROOT_ID)) return;
   const nativeButton = findNativeNewSessionButton();
   if (!nativeButton || !nativeButton.parentElement) return;
+  const root = document.createElement('div');
+  root.id = GENERAL_CHAT_ROOT_ID;
+  root.dataset.expanded = String(localStorage.getItem(GENERAL_CHAT_EXPANDED_KEY) === 'true');
+  root.dataset.loading = 'false';
+  const head = document.createElement('div');
+  head.className = 'dshd-general-chat-head';
   const button = document.createElement('button');
   button.id = GENERAL_CHAT_BUTTON_ID;
   button.type = 'button';
-  button.title = '新建一个不关联项目的通用对话';
+  button.title = '打开最近使用的通用对话';
   button.setAttribute('aria-label', GENERAL_CHAT_TITLE);
   button.innerHTML = '<svg class="dshd-general-chat-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 18.5 3.5 21l3.8-1A9 9 0 1 0 3 12c0 2.2.8 4.2 2 5.8Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="dshd-general-chat-label">通用对话</span>';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'dshd-general-chat-action dshd-general-chat-toggle';
+  toggle.title = '展开通用对话历史';
+  toggle.setAttribute('aria-label', '展开通用对话历史');
+  toggle.setAttribute('aria-expanded', root.dataset.expanded);
+  toggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'dshd-general-chat-action dshd-general-chat-add';
+  add.title = '新建通用对话';
+  add.setAttribute('aria-label', '新建通用对话');
+  add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const history = document.createElement('div');
+  history.id = GENERAL_CHAT_HISTORY_ID;
+  history.setAttribute('aria-label', '通用对话历史');
   const ids = generalChatSessionIds();
   const selected = selectedSessionId();
   // Do not seed this key while migrating from v0.5.1: the selected session may
@@ -2638,11 +2877,23 @@ function installGeneralChatButton() {
   }
   button.dataset.active = String(ids.includes(selected));
   button.dataset.busy = 'false';
-  nativeButton.insertAdjacentElement('afterend', button);
-  const syncCollapsed = () => { button.dataset.collapsed = String(button.parentElement.getBoundingClientRect().width < 100); };
+  head.append(button, toggle, add);
+  root.append(head, history);
+  nativeButton.insertAdjacentElement('afterend', root);
+  const syncCollapsed = () => { root.dataset.collapsed = String(root.parentElement.getBoundingClientRect().width < 100); };
   syncCollapsed();
-  new ResizeObserver(syncCollapsed).observe(button.parentElement);
+  new ResizeObserver(syncCollapsed).observe(root.parentElement);
   button.addEventListener('click', () => { openGeneralChat(button); });
+  toggle.addEventListener('click', () => {
+    const expanded = root.dataset.expanded !== 'true';
+    root.dataset.expanded = String(expanded);
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.title = expanded ? '收起通用对话历史' : '展开通用对话历史';
+    localStorage.setItem(GENERAL_CHAT_EXPANDED_KEY, String(expanded));
+    if (expanded) refreshGeneralChatHistory(root);
+  });
+  add.addEventListener('click', () => { openGeneralChat(button, { createNew: true }); });
+  refreshGeneralChatHistory(root);
 }
 
 function bootGeneralChat() {
@@ -2653,11 +2904,18 @@ function bootGeneralChat() {
     (document.head || document.documentElement).appendChild(style);
   }
   const reconcile = (root = document) => {
+    installNativeNewSessionBridge();
     installGeneralChatButton();
     hideGeneralWorkspaceGroup(root);
   };
   reconcile();
+  const pendingNotice = localStorage.getItem(GENERAL_CHAT_NOTICE_KEY);
+  if (pendingNotice) {
+    localStorage.removeItem(GENERAL_CHAT_NOTICE_KEY);
+    showGeneralChatNotice(pendingNotice);
+  }
   new MutationObserver((records) => {
+    installNativeNewSessionBridge();
     installGeneralChatButton();
     for (const record of records) for (const node of record.addedNodes) {
       if (node.nodeType === Node.ELEMENT_NODE) hideGeneralWorkspaceGroup(node);

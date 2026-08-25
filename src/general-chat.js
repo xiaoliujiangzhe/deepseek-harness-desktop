@@ -61,10 +61,40 @@ function selectGeneralChatSession(summaries, workspaceSessionIds, preferredSessi
   })[0] || null;
 }
 
+/**
+ * Build the visible history shown below the desktop general-chat entry.
+ * Blank sessions stay hidden unless currently selected, matching Harness's
+ * native sidebar while preserving access to every real top-level chat.
+ *
+ * @param {Array<object>} summaries Rows returned by session.list.
+ * @param {Array<string>} workspaceSessionIds Session ids owned by the workspace.
+ * @param {string} selectedSessionId Currently selected session id.
+ * @returns {Array<{sessionId: string, title: string, updatedAt: number, blank: boolean}>}
+ */
+function listGeneralChatSessions(summaries, workspaceSessionIds, selectedSessionId = '') {
+  if (!Array.isArray(summaries) || !Array.isArray(workspaceSessionIds)) return [];
+  const membership = new Set(workspaceSessionIds.filter(id => typeof id === 'string'));
+  return summaries
+    .filter(summary => summary
+      && typeof summary.sessionId === 'string'
+      && membership.has(summary.sessionId)
+      && summary.origin !== 'subagent'
+      && !summary.parentSessionId
+      && (!summary.blank || summary.sessionId === selectedSessionId))
+    .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0))
+    .map(summary => ({
+      sessionId: summary.sessionId,
+      title: typeof summary.title === 'string' && summary.title.trim() ? summary.title.trim() : '新对话',
+      updatedAt: Number(summary.updatedAt) || 0,
+      blank: Boolean(summary.blank)
+    }));
+}
+
 module.exports = {
   GENERAL_CHAT_DIRNAME,
   GENERAL_CHAT_INSTRUCTIONS,
   GENERAL_CHAT_TITLE,
   ensureGeneralChatWorkspace,
+  listGeneralChatSessions,
   selectGeneralChatSession
 };

@@ -1,0 +1,8 @@
+Use case: stylized-concept
+Asset type: chat sticker
+Primary request: Recreate the exact same original chibi whale-girl mascot from the reference image after her code has crashed. She is frozen in comic panic with spiral eyes, messy hair, pale face, fin ornaments drooping, and both hands holding a small dark-blue laptop that emits one harmless puff of cyan smoke and a red error cross icon.
+Identity lock: preserve her blue bob haircut, curled ahoge, blue eyes when visible, whale hair clip, two side whale-fin ornaments, blue-and-white sailor-inspired outfit, gold accents, and large blue whale tail.
+Style/medium: polished clean anime chibi sticker illustration, soft cel shading, crisp dark-blue outline, highly readable exaggerated expression.
+Composition/framing: one three-quarter body character, compact centered silhouette, generous margin.
+Background: perfectly uniform flat vivid magenta chroma-key background (#ff00ff), no gradient, shadow, texture, or scenery.
+Constraints: exactly one laptop; no fire, injury, readable text, letters, logo, watermark, border, speech bubble, duplicate body parts, or cropped tail.

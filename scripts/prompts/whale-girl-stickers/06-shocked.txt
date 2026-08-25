@@ -1,0 +1,8 @@
+Use case: stylized-concept
+Asset type: chat sticker
+Primary request: Recreate the exact same original chibi whale-girl mascot from the reference image in total shock. Her eyes are huge and round, mouth is a tiny open circle, hair and whale tail stand straight up, both hands press against her cheeks, and three small cyan exclamation-shaped impact marks float beside her.
+Identity lock: preserve her blue bob haircut, curled ahoge, blue eyes, whale hair clip, two side whale-fin ornaments, blue-and-white sailor-inspired outfit, gold accents, and large blue whale tail.
+Style/medium: polished clean anime chibi sticker illustration, soft cel shading, crisp dark-blue outline, exaggerated meme-like expression.
+Composition/framing: one three-quarter body character, compact centered silhouette, generous margin.
+Background: perfectly uniform flat vivid magenta chroma-key background (#ff00ff), no gradient, shadow, texture, or scenery.
+Constraints: symbol marks contain no readable text; no food, letters, logo, watermark, border, speech bubble, duplicate body parts, or cropped fin ornaments.

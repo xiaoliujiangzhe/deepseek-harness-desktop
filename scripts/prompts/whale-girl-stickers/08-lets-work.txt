@@ -1,0 +1,8 @@
+Use case: stylized-concept
+Asset type: chat sticker
+Primary request: Recreate the exact same original chibi whale-girl mascot from the reference image ready to start working. She wears a determined confident grin, sleeves rolled up, one fist raised, the other hand gripping a small blue wrench, while her whale tail points forward energetically and two cyan speed streaks emphasize motion.
+Identity lock: preserve her blue bob haircut, curled ahoge, blue eyes, whale hair clip, two side whale-fin ornaments, blue-and-white sailor-inspired outfit, gold accents, and large blue whale tail.
+Style/medium: polished clean anime chibi sticker illustration, soft cel shading, crisp dark-blue outline, energetic heroic expression.
+Composition/framing: one three-quarter body character, compact centered silhouette, generous margin.
+Background: perfectly uniform flat vivid magenta chroma-key background (#ff00ff), no gradient, shadow, texture, or scenery.
+Constraints: exactly one small wrench; no food, no readable text or letters, no logo, watermark, border, speech bubble, duplicate body parts, or cropped tail.

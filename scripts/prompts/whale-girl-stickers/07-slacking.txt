@@ -1,0 +1,8 @@
+Use case: stylized-concept
+Asset type: chat sticker
+Primary request: Recreate the exact same original chibi whale-girl mascot from the reference image secretly slacking off and napping. She is curled comfortably against her own large whale tail like a pillow, eyes closed, peaceful smile, with one tiny translucent cyan sleep bubble at her nose and two small floating sleep marks.
+Identity lock: preserve her blue bob haircut, curled ahoge, whale hair clip, two side whale-fin ornaments, blue-and-white sailor-inspired outfit, gold accents, and large blue whale tail.
+Style/medium: polished clean anime chibi sticker illustration, soft cel shading, crisp dark-blue outline, cozy cute expression.
+Composition/framing: one full curled character, compact rounded centered silhouette, generous margin.
+Background: perfectly uniform flat vivid magenta chroma-key background (#ff00ff), no gradient, shadow, texture, or scenery.
+Constraints: no bed, no food, no readable text or letters, no logo, watermark, border, speech bubble, duplicate body parts, or cropped tail.

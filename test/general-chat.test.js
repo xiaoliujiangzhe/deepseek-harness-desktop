@@ -10,6 +10,7 @@ const {
   GENERAL_CHAT_INSTRUCTIONS,
   GENERAL_CHAT_TITLE,
   ensureGeneralChatWorkspace,
+  listGeneralChatSessions,
   selectGeneralChatSession
 } = require('../src/general-chat');
 
@@ -70,7 +71,45 @@ test('reuses the latest blank session and returns null only when none belongs to
   assert.equal(selectGeneralChatSession(summaries, ['missing']), null);
 });
 
+test('lists every non-blank top-level general chat in latest-first order', () => {
+  const summaries = [
+    { sessionId: 'older', title: '第一段对话', blank: false, updatedAt: 10 },
+    { sessionId: 'newer', title: '第二段对话', blank: false, updatedAt: 30 },
+    { sessionId: 'blank', blank: true, updatedAt: 40 },
+    { sessionId: 'child', title: '子会话', blank: false, updatedAt: 50, parentSessionId: 'newer' },
+    { sessionId: 'other', title: '其他工作区', blank: false, updatedAt: 60 }
+  ];
+  assert.deepEqual(
+    listGeneralChatSessions(summaries, ['older', 'newer', 'blank', 'child']),
+    [
+      { sessionId: 'newer', title: '第二段对话', blank: false, updatedAt: 30 },
+      { sessionId: 'older', title: '第一段对话', blank: false, updatedAt: 10 }
+    ]
+  );
+});
+
+test('keeps the selected blank general chat visible with a safe fallback title', () => {
+  const summaries = [{ sessionId: 'blank', title: '   ', blank: true, updatedAt: 20 }];
+  assert.deepEqual(
+    listGeneralChatSessions(summaries, ['blank'], 'blank'),
+    [{ sessionId: 'blank', title: '新对话', blank: true, updatedAt: 20 }]
+  );
+});
+
 test('sandboxed main-window preload does not require local CommonJS modules', () => {
   const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload-main.js'), 'utf8');
   assert.doesNotMatch(preload, /require\(\s*['"]\.\.?[\\/]/);
+});
+
+test('desktop tools boot before the general-chat history enhancement', () => {
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload-main.js'), 'utf8');
+  const boot = preload.match(/function bootDesktopFeatures\(\) \{([\s\S]*?)\n\}/)?.[1] || '';
+  assert.ok(boot.indexOf('bootTools();') >= 0);
+  assert.ok(boot.indexOf('bootGeneralChat();') > boot.indexOf('bootTools();'));
+});
+
+test('native new-session behavior is bridged only while a general chat is selected', () => {
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload-main.js'), 'utf8');
+  assert.match(preload, /if \(!generalChatSessionIds\(\)\.includes\(selected\)\) return;/);
+  assert.match(preload, /if \(current\?\.blank\) \{[\s\S]*?当前已经是空白新对话/);
 });
