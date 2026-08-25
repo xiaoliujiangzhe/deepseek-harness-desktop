@@ -8,6 +8,7 @@
  *      the user can change those options in place.
  */
 const { ipcRenderer } = require('electron');
+const { selectGeneralChatSession } = require('./general-chat');
 
 const DEFAULTS = {
   accent: '',
@@ -25,6 +26,7 @@ const ROW_ID = 'dsh-desktop-appearance-row';
 const GENERAL_CHAT_BUTTON_ID = 'dshd-general-chat';
 const GENERAL_CHAT_TITLE = '通用对话';
 const GENERAL_CHAT_SESSION_IDS_KEY = 'dshd.general-chat.sessions';
+const GENERAL_CHAT_LAST_SESSION_KEY = 'dshd.general-chat.last-session';
 
 // ---------- color utils ----------
 
@@ -2541,6 +2543,11 @@ function selectedSessionId() {
   }
 }
 
+function lastGeneralChatSessionId() {
+  const value = localStorage.getItem(GENERAL_CHAT_LAST_SESSION_KEY);
+  return typeof value === 'string' ? value : '';
+}
+
 async function generalChatRpc(method, payload) {
   const rpcId = `dshd-general-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const response = await fetch(`/api/${method}`, {
@@ -2568,11 +2575,19 @@ async function openGeneralChat(button) {
     if (workspace.title !== managed.title) {
       await generalChatRpc('workspace.rename', { workspaceId: workspace.workspaceId, title: managed.title });
     }
-    const session = await generalChatRpc('session.create', { workspaceId: workspace.workspaceId });
-    if (!session || typeof session.sessionId !== 'string') throw new Error('通用对话会话创建失败');
+    const listed = await generalChatRpc('session.list', {});
+    const restored = selectGeneralChatSession(
+      Array.isArray(listed?.items) ? listed.items : [],
+      Array.isArray(workspace.sessionIds) ? workspace.sessionIds : [],
+      lastGeneralChatSessionId()
+    );
+    const session = restored || await generalChatRpc('session.create', { workspaceId: workspace.workspaceId });
+    if (!session || typeof session.sessionId !== 'string') throw new Error('通用对话会话恢复失败');
     const ids = new Set(generalChatSessionIds());
+    for (const id of Array.isArray(workspace.sessionIds) ? workspace.sessionIds : []) ids.add(id);
     ids.add(session.sessionId);
     localStorage.setItem(GENERAL_CHAT_SESSION_IDS_KEY, JSON.stringify([...ids].slice(-200)));
+    localStorage.setItem(GENERAL_CHAT_LAST_SESSION_KEY, session.sessionId);
     localStorage.setItem('dsh.sessions.current', JSON.stringify({ sessionId: session.sessionId }));
     location.reload();
   } catch (error) {
@@ -2615,7 +2630,13 @@ function installGeneralChatButton() {
   button.setAttribute('aria-label', GENERAL_CHAT_TITLE);
   button.innerHTML = '<svg class="dshd-general-chat-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 18.5 3.5 21l3.8-1A9 9 0 1 0 3 12c0 2.2.8 4.2 2 5.8Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="dshd-general-chat-label">通用对话</span>';
   const ids = generalChatSessionIds();
-  button.dataset.active = String(ids.includes(selectedSessionId()));
+  const selected = selectedSessionId();
+  // Do not seed this key while migrating from v0.5.1: the selected session may
+  // be one of the accidental blanks created by the old navigation behavior.
+  if (ids.includes(selected) && lastGeneralChatSessionId()) {
+    localStorage.setItem(GENERAL_CHAT_LAST_SESSION_KEY, selected);
+  }
+  button.dataset.active = String(ids.includes(selected));
   button.dataset.busy = 'false';
   nativeButton.insertAdjacentElement('afterend', button);
   const syncCollapsed = () => { button.dataset.collapsed = String(button.parentElement.getBoundingClientRect().width < 100); };

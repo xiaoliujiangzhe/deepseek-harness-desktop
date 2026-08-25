@@ -9,7 +9,8 @@ const {
   GENERAL_CHAT_DIRNAME,
   GENERAL_CHAT_INSTRUCTIONS,
   GENERAL_CHAT_TITLE,
-  ensureGeneralChatWorkspace
+  ensureGeneralChatWorkspace,
+  selectGeneralChatSession
 } = require('../src/general-chat');
 
 test('creates a private general-chat workspace and instructions', (t) => {
@@ -36,4 +37,35 @@ test('does not overwrite existing general-chat instructions', (t) => {
 
 test('rejects a relative userData directory', () => {
   assert.throws(() => ensureGeneralChatWorkspace('relative'), /absolute userData/);
+});
+
+test('restores the explicitly remembered general-chat session', () => {
+  const summaries = [
+    { sessionId: 'newer', blank: false, updatedAt: 20 },
+    { sessionId: 'remembered', blank: false, updatedAt: 10 }
+  ];
+  assert.equal(selectGeneralChatSession(summaries, ['newer', 'remembered'], 'remembered').sessionId, 'remembered');
+});
+
+test('migration prefers the latest non-blank session over a newer accidental blank', () => {
+  const summaries = [
+    { sessionId: 'accidental-blank', blank: true, updatedAt: 30 },
+    { sessionId: 'older-chat', blank: false, updatedAt: 20 },
+    { sessionId: 'newer-chat', blank: false, updatedAt: 25 },
+    { sessionId: 'other-workspace', blank: false, updatedAt: 40 },
+    { sessionId: 'subagent', blank: false, updatedAt: 50, origin: 'subagent' }
+  ];
+  assert.equal(
+    selectGeneralChatSession(summaries, ['accidental-blank', 'older-chat', 'newer-chat', 'subagent']).sessionId,
+    'newer-chat'
+  );
+});
+
+test('reuses the latest blank session and returns null only when none belongs to the workspace', () => {
+  const summaries = [
+    { sessionId: 'blank-old', blank: true, updatedAt: 10 },
+    { sessionId: 'blank-new', blank: true, updatedAt: 20 }
+  ];
+  assert.equal(selectGeneralChatSession(summaries, ['blank-old', 'blank-new']).sessionId, 'blank-new');
+  assert.equal(selectGeneralChatSession(summaries, ['missing']), null);
 });

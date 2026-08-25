@@ -34,9 +34,37 @@ function ensureGeneralChatWorkspace(userData) {
   return { path: workspace, title: GENERAL_CHAT_TITLE };
 }
 
+/**
+ * Resolve the conversation opened by the general-chat navigation entry.
+ * Prefer an explicitly remembered top-level session. During migration from
+ * v0.5.1, prefer a non-blank session so an accidentally-created newer blank
+ * session does not hide an existing conversation.
+ *
+ * @param {Array<object>} summaries Rows returned by session.list.
+ * @param {Array<string>} workspaceSessionIds Session ids owned by the workspace.
+ * @param {string} preferredSessionId Last general-chat session selected by the user.
+ * @returns {object|null}
+ */
+function selectGeneralChatSession(summaries, workspaceSessionIds, preferredSessionId = '') {
+  if (!Array.isArray(summaries) || !Array.isArray(workspaceSessionIds)) return null;
+  const membership = new Set(workspaceSessionIds.filter(id => typeof id === 'string'));
+  const candidates = summaries.filter(summary => summary
+    && typeof summary.sessionId === 'string'
+    && membership.has(summary.sessionId)
+    && summary.origin !== 'subagent'
+    && !summary.parentSessionId);
+  const preferred = candidates.find(summary => summary.sessionId === preferredSessionId);
+  if (preferred) return preferred;
+  return candidates.sort((left, right) => {
+    if (Boolean(left.blank) !== Boolean(right.blank)) return left.blank ? 1 : -1;
+    return (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0);
+  })[0] || null;
+}
+
 module.exports = {
   GENERAL_CHAT_DIRNAME,
   GENERAL_CHAT_INSTRUCTIONS,
   GENERAL_CHAT_TITLE,
-  ensureGeneralChatWorkspace
+  ensureGeneralChatWorkspace,
+  selectGeneralChatSession
 };

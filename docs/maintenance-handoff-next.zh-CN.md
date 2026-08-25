@@ -1,10 +1,17 @@
-# DSH Desktop 0.5.1 维护交接记录
+# DSH Desktop 0.5.2 维护交接记录
 
 日期：2026-08-25
 
 ## 状态
 
-本文保留 `v0.5.0` 的内置文件编辑器发布信息，并记录 `v0.5.1` 新增的通用对话功能。
+本文保留 `v0.5.0` 的内置文件编辑器和 `v0.5.1` 的通用对话信息，并记录 `v0.5.2` 的会话恢复修复。
+
+## v0.5.2：通用对话会话恢复
+
+- 修复 `v0.5.1` 每次点击“通用对话”都会调用 `session.create`、导致返回后看起来像聊天记录丢失的问题；实际旧日志从未被删除。
+- 入口现在先调用官方 `session.list`，并只在通用 Workspace 的 `sessionIds` 成员中恢复顶级 Session；已有可用 Session 时不再创建新会话。
+- 正常使用时优先恢复桌面端记录的上次通用 Session；从 `v0.5.1` 首次升级时优先选择最近一条 `blank=false` 的会话，跳过旧版本误建的更新但空白的 Session。
+- 使用用户当前真实数据核验：通用 Workspace 中 8 个 Session 有 7 个为空，唯一有内容的 `session-46bc…` 被恢复算法正确选中；本地修复版完成“切换到其他工作区 → 返回通用对话”人工验证，重新显示原“你好”聊天。
 
 ## v0.5.1：通用对话
 
@@ -43,7 +50,7 @@ npm run verify:harness
 git diff --check
 ```
 
-- 自动化测试：原 `v0.5.0` 发布验收为 43 项；加入通用对话后当前为 46 项通过。
+- 自动化测试：原 `v0.5.0` 发布验收为 43 项，`v0.5.1` 为 46 项；加入会话恢复覆盖后当前为 49 项通过。
 - Harness 校验：`0.1.1-rc.2`。
 - 隔离开发版已打开 `editor-demo.txt`，确认标签、工具栏、行号、编辑区和编码/EOL 状态出现。
 - 隔离目录：`.test-electron-user-data` 与 `.test-dsh-home-editor`，均被 `.gitignore` 排除，不修改正式 `~/.dsh`。
@@ -52,13 +59,13 @@ git diff --check
 
 ## 发布资产
 
-- 安装包：`DeepSeek-Harness-Setup-0.5.1.exe`，149,115,714 bytes，SHA256：`BB34E799F9DAB3132DEE2DCC373BE07C75232F345F80A76529BCD731A0ECE594`。
-- blockmap：`DeepSeek-Harness-Setup-0.5.1.exe.blockmap`，154,999 bytes，SHA256：`953D9249B3BB0C138B5CD67C812752078CC0D1AC28412CF5B0404D96ED65DA52`。
-- 更新元数据：`latest.yml`，361 bytes，SHA256：`7AF8C65FB390C8CE7B97A698C8F6B323EB6913042C127ABF475DCD2CF40A81BF`。
-- `latest.yml` 的版本、文件名、SHA512 和文件大小均与 `v0.5.1` 安装包一致，可供已安装的 Stable 通道检查更新。
+- 安装包：`DeepSeek-Harness-Setup-0.5.2.exe`，149,115,967 bytes，SHA256：`10D33B7F0D5069F5A64A5CD154ED24D78BF44057EDECD124E417CEE03A54D784`。
+- blockmap：`DeepSeek-Harness-Setup-0.5.2.exe.blockmap`，154,987 bytes，SHA256：`1AC0D0C1D8266577C11AFFF5BB1BA02BC62AC131639073CE85D390F1B99B55DF`。
+- 更新元数据：`latest.yml`，361 bytes，SHA256：`3EEEA9D2352A2845858022855BBADDDCFFC60B20C3FD037D1D659C56A3CA6046`。
+- `latest.yml` 的版本、文件名、SHA512 和文件大小均与 `v0.5.2` 安装包一致，可供已安装的 Stable 通道检查更新。
 
 ## 下一步
 
 - 由用户人工确认输入、`Ctrl+S`、重新打开、查找、自动换行、未保存关闭提醒和外部冲突提示。
-- `v0.5.0` 已发布，不覆盖原 Release；通用对话作为 `v0.5.1` 单独发布。
-- `v0.5.1` GitHub Release 上传后，从已安装的旧版 Stable 通道执行检查、下载和“重启并安装”，完成真实升级链路验收。
+- `v0.5.0` 和 `v0.5.1` 均保留原 Release；会话恢复修复作为 `v0.5.2` 单独发布。
+- `v0.5.2` GitHub Release 上传后，从已安装的 `v0.5.1` Stable 通道执行检查、下载和“重启并安装”，完成真实升级链路验收。
