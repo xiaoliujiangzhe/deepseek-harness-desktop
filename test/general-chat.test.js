@@ -69,3 +69,8 @@ test('reuses the latest blank session and returns null only when none belongs to
   assert.equal(selectGeneralChatSession(summaries, ['blank-old', 'blank-new']).sessionId, 'blank-new');
   assert.equal(selectGeneralChatSession(summaries, ['missing']), null);
 });
+
+test('sandboxed main-window preload does not require local CommonJS modules', () => {
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload-main.js'), 'utf8');
+  assert.doesNotMatch(preload, /require\(\s*['"]\.\.?[\\/]/);
+});

@@ -1,10 +1,18 @@
-# DSH Desktop 0.5.2 维护交接记录
+# DSH Desktop 0.5.3 维护交接记录
 
 日期：2026-08-25
 
 ## 状态
 
-本文保留 `v0.5.0` 的内置文件编辑器和 `v0.5.1` 的通用对话信息，并记录 `v0.5.2` 的会话恢复修复。
+本文保留 `v0.5.0` 的内置文件编辑器、`v0.5.1` 的通用对话和 `v0.5.2` 的会话恢复信息，并记录 `v0.5.3` 的桌面注入热修。
+
+## v0.5.3：沙箱 preload 热修
+
+- `v0.5.2` 在开启 `sandbox: true` 的主窗口 preload 顶层增加了 `require('./general-chat')`。Electron 沙箱 preload 不允许加载本地 CommonJS 模块，该异常导致整个 preload 提前终止，因此工具栏、外观注入和独立通用对话入口同时消失。
+- `src/preload-main.js` 已恢复为只加载沙箱允许的 `electron` 模块；会话选择通过新增的 `general-chat:select-session` 受限 IPC 交给主进程执行。
+- 自动化增加一项源码约束，禁止沙箱 preload 再出现相对路径 `require`。当前总计 50 项通过。
+- 使用正式用户数据启动本地修复版实测：右侧工具栏恢复；独立通用对话入口恢复；内部通用 Workspace 继续隐藏；点击入口仍回到原“你好”会话。
+- `v0.5.2` 的更新中心随工具栏一起不可用，因此该版本用户需要手动下载安装 `v0.5.3`；之后应用内更新能力恢复。
 
 ## v0.5.2：通用对话会话恢复
 
@@ -50,7 +58,7 @@ npm run verify:harness
 git diff --check
 ```
 
-- 自动化测试：原 `v0.5.0` 发布验收为 43 项，`v0.5.1` 为 46 项；加入会话恢复覆盖后当前为 49 项通过。
+- 自动化测试：原 `v0.5.0` 发布验收为 43 项，`v0.5.1` 为 46 项，`v0.5.2` 为 49 项；加入沙箱 preload 防回归覆盖后当前为 50 项通过。
 - Harness 校验：`0.1.1-rc.2`。
 - 隔离开发版已打开 `editor-demo.txt`，确认标签、工具栏、行号、编辑区和编码/EOL 状态出现。
 - 隔离目录：`.test-electron-user-data` 与 `.test-dsh-home-editor`，均被 `.gitignore` 排除，不修改正式 `~/.dsh`。
@@ -59,13 +67,13 @@ git diff --check
 
 ## 发布资产
 
-- 安装包：`DeepSeek-Harness-Setup-0.5.2.exe`，149,115,967 bytes，SHA256：`10D33B7F0D5069F5A64A5CD154ED24D78BF44057EDECD124E417CEE03A54D784`。
-- blockmap：`DeepSeek-Harness-Setup-0.5.2.exe.blockmap`，154,987 bytes，SHA256：`1AC0D0C1D8266577C11AFFF5BB1BA02BC62AC131639073CE85D390F1B99B55DF`。
-- 更新元数据：`latest.yml`，361 bytes，SHA256：`3EEEA9D2352A2845858022855BBADDDCFFC60B20C3FD037D1D659C56A3CA6046`。
-- `latest.yml` 的版本、文件名、SHA512 和文件大小均与 `v0.5.2` 安装包一致，可供已安装的 Stable 通道检查更新。
+- 安装包：`DeepSeek-Harness-Setup-0.5.3.exe`，149,116,108 bytes，SHA256：`06080900451CF44C62715DCCBF1ED3FE1A5744E8BF7E1DA4C0088A3680457376`。
+- blockmap：`DeepSeek-Harness-Setup-0.5.3.exe.blockmap`，154,873 bytes，SHA256：`2EC62F358E2868C22070E4121BE20886EBF3DEE464F0C3F6CEF41C711808BD03`。
+- 更新元数据：`latest.yml`，361 bytes，SHA256：`32266BFDC198E14C89C4C71145C880E2C7C5B576A1D996452DA48E1B5EE74A10`。
+- `latest.yml` 的版本、文件名、SHA512 和文件大小均与 `v0.5.3` 安装包一致，可供已安装的 Stable 通道检查更新。
 
 ## 下一步
 
-- 由用户人工确认输入、`Ctrl+S`、重新打开、查找、自动换行、未保存关闭提醒和外部冲突提示。
-- `v0.5.0` 和 `v0.5.1` 均保留原 Release；会话恢复修复作为 `v0.5.2` 单独发布。
-- `v0.5.2` GitHub Release 上传后，从已安装的 `v0.5.1` Stable 通道执行检查、下载和“重启并安装”，完成真实升级链路验收。
+- `v0.5.2` 用户需要从 GitHub 手动下载安装一次 `v0.5.3`；该版本的工具栏未初始化，无法使用应用内更新入口。
+- 安装 `v0.5.3` 后，确认工具栏、更新中心、内置浏览器、文件编辑器、插件中心和通用对话入口均正常。
+- 后续版本继续通过 Stable 通道执行检查、下载和“重启并安装”，验证应用内升级链路。

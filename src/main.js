@@ -14,7 +14,7 @@ const { LocalPreviewServer } = require('./local-preview-server');
 const { isSupportedTextFile, readWorkspaceTextFile, resolveWorkspaceTextFile, writeWorkspaceTextFile } = require('./text-file-editor');
 const { installMarketplacePlugin, listInstalled, resetMarketplaceCache, runPluginCommand, runtimePnpmPath, searchMarketplace, setPluginEnabled, updateInstalledPlugin } = require('./plugin-manager');
 const { backupConfiguration, buildDiagnosticReport, clearMarketplaceCache, redactSecrets, repairCredentialsVersion } = require('./diagnostics');
-const { ensureGeneralChatWorkspace } = require('./general-chat');
+const { ensureGeneralChatWorkspace, selectGeneralChatSession } = require('./general-chat');
 
 const APP_NAME = 'DeepSeek Harness';
 const LOADING_WINDOW_SIZE = { width: 480, height: 340 };
@@ -508,6 +508,9 @@ ipcMain.handle('startup:get-state', () => ({
 // directory so users can start a general conversation without choosing a
 // project folder.
 ipcMain.handle('general-chat:workspace', () => ensureGeneralChatWorkspace(app.getPath('userData')));
+ipcMain.handle('general-chat:select-session', (_event, summaries, workspaceSessionIds, preferredSessionId) => (
+  selectGeneralChatSession(summaries, workspaceSessionIds, preferredSessionId)
+));
 
 // --- IPC for the appearance feature ---
 ipcMain.handle('appearance:get', () => loadSettings().appearance);

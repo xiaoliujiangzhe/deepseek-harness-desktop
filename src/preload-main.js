@@ -8,7 +8,6 @@
  *      the user can change those options in place.
  */
 const { ipcRenderer } = require('electron');
-const { selectGeneralChatSession } = require('./general-chat');
 
 const DEFAULTS = {
   accent: '',
@@ -2576,7 +2575,8 @@ async function openGeneralChat(button) {
       await generalChatRpc('workspace.rename', { workspaceId: workspace.workspaceId, title: managed.title });
     }
     const listed = await generalChatRpc('session.list', {});
-    const restored = selectGeneralChatSession(
+    const restored = await ipcRenderer.invoke(
+      'general-chat:select-session',
       Array.isArray(listed?.items) ? listed.items : [],
       Array.isArray(workspace.sessionIds) ? workspace.sessionIds : [],
       lastGeneralChatSessionId()
