@@ -33,12 +33,20 @@ function credentialsVersionState(file = credentialFile()) {
   let text;
   try { text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''); }
   catch (error) { return { exists: true, valid: false, value: null, error: error.message }; }
-  const match = text.match(/^\s*version\s*:\s*([^#\r\n]+?)\s*(?:#.*)?$/m);
+  const match = text.match(/^version\s*:\s*([^#\r\n]+?)\s*(?:#.*)?$/m);
   if (!match) return { exists: true, valid: false, value: null, error: '缺少 version 字段' };
   const raw = match[1].trim();
-  const quoted = (/^"(?:[^"\\]|\\.)*"$/).test(raw) || (/^'(?:[^']|'')*'$/).test(raw);
-  const numericOrBoolean = /^(?:[-+]?\d+(?:\.\d+)?|true|false|null|~)$/i.test(raw);
-  return { exists: true, valid: quoted || !numericOrBoolean, value: raw };
+  if (raw === '1') return { exists: true, valid: true, repairable: false, value: raw };
+  const repairable = raw === '"1"' || raw === "'1'";
+  return {
+    exists: true,
+    valid: false,
+    repairable,
+    value: raw,
+    error: repairable
+      ? 'version 使用了旧版字符串格式，需要迁移为数字 1'
+      : 'version 必须是数字 1；当前值无法安全自动修复'
+  };
 }
 
 function timestamp() {
@@ -76,19 +84,17 @@ function repairCredentialsVersion(options = {}) {
   const file = credentialFile(home);
   const state = credentialsVersionState(file);
   if (!state.exists) throw new Error('没有找到 .credentials.yaml');
-  if (state.valid) return { changed: false, file, message: 'credentials version 已经是字符串' };
-  if (!state.value || !/^(?:[-+]?\d+(?:\.\d+)?|true|false|null|~)$/i.test(state.value)) {
+  if (state.valid) return { changed: false, file, message: 'credentials version 已与当前 Harness 兼容' };
+  if (!state.repairable) {
     throw new Error(state.error || '无法安全修复 credentials version');
   }
   const backup = `${file}.desktop-backup-${timestamp()}`;
   fs.copyFileSync(file, backup);
   const original = fs.readFileSync(file, 'utf8');
-  const updated = original.replace(/^(\s*version\s*:\s*)([^#\r\n]+?)(\s*(?:#.*)?)$/m, (_whole, prefix, raw, suffix) => {
-    const escaped = String(raw).trim().replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    return `${prefix}"${escaped}"${suffix}`;
-  });
+  const updated = original.replace(/^(\uFEFF?version\s*:\s*)(["']1["'])(\s*(?:#.*)?)$/m, (_whole, prefix, _legacy, suffix) => `${prefix}1${suffix}`);
+  if (updated === original) throw new Error('无法安全定位顶层 credentials version 字段');
   fs.writeFileSync(file, updated, 'utf8');
-  return { changed: true, file, backup, message: '已将 credentials version 修复为字符串' };
+  return { changed: true, file, backup, message: '已备份凭据配置，并将 version 迁移为当前 Harness 使用的数字格式' };
 }
 
 function clearMarketplaceCache(options = {}) {
@@ -122,7 +128,7 @@ async function buildDiagnosticReport(options = {}) {
   const credentialState = credentialsVersionState(credentialFile(home));
   if (!credentialState.exists) add('credentials-version', '凭据配置', 'warn', '尚未创建 .credentials.yaml');
   else if (credentialState.valid) add('credentials-version', '凭据配置', 'ok', 'version 字段类型正确');
-  else add('credentials-version', '凭据配置', 'error', credentialState.error || 'version 必须是字符串', { repair: 'credentials-version' });
+  else add('credentials-version', '凭据配置', 'error', credentialState.error || 'version 必须是数字 1', credentialState.repairable ? { repair: 'credentials-version' } : {});
 
   const profileManifest = path.join(home, 'profiles', 'web', 'package.json');
   try {

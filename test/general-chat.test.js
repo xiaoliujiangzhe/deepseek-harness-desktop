@@ -10,6 +10,8 @@ const {
   GENERAL_CHAT_INSTRUCTIONS,
   GENERAL_CHAT_TITLE,
   ensureGeneralChatWorkspace,
+  generalChatSessionTitle,
+  increasedForkTitle,
   listGeneralChatSessions,
   selectGeneralChatSession
 } = require('../src/general-chat');
@@ -71,19 +73,59 @@ test('reuses the latest blank session and returns null only when none belongs to
   assert.equal(selectGeneralChatSession(summaries, ['missing']), null);
 });
 
-test('lists every non-blank top-level general chat in latest-first order', () => {
+test('selection excludes archived sessions but keeps ordinary forks eligible', () => {
+  const summaries = [
+    { sessionId: 'archived', blank: false, updatedAt: 30 },
+    { sessionId: 'fork', blank: false, updatedAt: 20, parentSessionId: 'root' },
+    { sessionId: 'subagent', blank: false, updatedAt: 40, parentSessionId: 'root', origin: 'subagent' }
+  ];
+  assert.equal(
+    selectGeneralChatSession(summaries, ['archived', 'fork', 'subagent'], 'archived', ['archived']).sessionId,
+    'fork'
+  );
+});
+
+test('reads durable session titles from direct and projected list fields', () => {
+  assert.equal(generalChatSessionTitle({ title: '  手动标题  ' }), '手动标题');
+  assert.equal(generalChatSessionTitle({ projections: { values: { title: '  自动标题  ' } } }), '自动标题');
+  assert.equal(generalChatSessionTitle({ projections: { values: {} } }), '');
+});
+
+test('increments fork titles with the same suffix convention as Harness', () => {
+  assert.equal(increasedForkTitle('测试'), '测试 (1)');
+  assert.equal(increasedForkTitle('测试 (1)'), '测试 (2)');
+  assert.equal(increasedForkTitle('测试（8）'), '测试（9）');
+  assert.equal(increasedForkTitle('   '), '');
+});
+
+test('lists every ordinary general chat including forks in latest-first order', () => {
   const summaries = [
     { sessionId: 'older', title: '第一段对话', blank: false, updatedAt: 10 },
-    { sessionId: 'newer', title: '第二段对话', blank: false, updatedAt: 30 },
+    { sessionId: 'newer', blank: false, updatedAt: 30, projections: { values: { title: '第二段对话' } } },
     { sessionId: 'blank', blank: true, updatedAt: 40 },
-    { sessionId: 'child', title: '子会话', blank: false, updatedAt: 50, parentSessionId: 'newer' },
+    { sessionId: 'fork', title: '分叉会话', blank: false, updatedAt: 50, parentSessionId: 'newer' },
+    { sessionId: 'subagent', title: '子 Agent', blank: false, updatedAt: 70, parentSessionId: 'newer', origin: 'subagent' },
+    { sessionId: 'archived', title: '已归档', blank: false, updatedAt: 60 },
     { sessionId: 'other', title: '其他工作区', blank: false, updatedAt: 60 }
   ];
   assert.deepEqual(
-    listGeneralChatSessions(summaries, ['older', 'newer', 'blank', 'child']),
+    listGeneralChatSessions(
+      summaries,
+      ['older', 'newer', 'blank', 'fork', 'subagent', 'archived'],
+      '',
+      ['archived']
+    ),
     [
-      { sessionId: 'newer', title: '第二段对话', blank: false, updatedAt: 30 },
-      { sessionId: 'older', title: '第一段对话', blank: false, updatedAt: 10 }
+      {
+        sessionId: 'fork',
+        title: '分叉会话',
+        blank: false,
+        updatedAt: 50,
+        hasTitle: true,
+        parentSessionId: 'newer'
+      },
+      { sessionId: 'newer', title: '第二段对话', blank: false, updatedAt: 30, hasTitle: true },
+      { sessionId: 'older', title: '第一段对话', blank: false, updatedAt: 10, hasTitle: true }
     ]
   );
 });
@@ -92,7 +134,7 @@ test('keeps the selected blank general chat visible with a safe fallback title',
   const summaries = [{ sessionId: 'blank', title: '   ', blank: true, updatedAt: 20 }];
   assert.deepEqual(
     listGeneralChatSessions(summaries, ['blank'], 'blank'),
-    [{ sessionId: 'blank', title: '新对话', blank: true, updatedAt: 20 }]
+    [{ sessionId: 'blank', title: '新对话', blank: true, updatedAt: 20, hasTitle: false }]
   );
 });
 
@@ -112,4 +154,20 @@ test('native new-session behavior is bridged only while a general chat is select
   const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload-main.js'), 'utf8');
   assert.match(preload, /if \(!generalChatSessionIds\(\)\.includes\(selected\)\) return;/);
   assert.match(preload, /if \(current\?\.blank\) \{[\s\S]*?当前已经是空白新对话/);
+});
+
+test('general chat row actions use Harness rename, fork and archive RPC methods', () => {
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload-main.js'), 'utf8');
+  assert.match(preload, /generalChatRpc\('session\.rename'/);
+  assert.match(preload, /generalChatRpc\('session\.fork'/);
+  assert.match(preload, /generalChatRpc\('workspace\.archiveSession'/);
+  assert.match(preload, /generalChatRpc\('workspace\.list'/);
+  assert.match(preload, /dshd-general-chat-session-menu-button/);
+});
+
+test('archived conversations have a labeled and accessible sidebar entry', () => {
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload-main.js'), 'utf8');
+  assert.match(preload, /archive\.setAttribute\('aria-label', '查看已归档对话'\)/);
+  assert.match(preload, /<span>已归档<\/span>/);
+  assert.match(preload, /ipcRenderer\.invoke\('archive:mutate'/);
 });

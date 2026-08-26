@@ -34,25 +34,53 @@ function ensureGeneralChatWorkspace(userData) {
   return { path: workspace, title: GENERAL_CHAT_TITLE };
 }
 
+/** Return the durable title carried by a session.list projection. */
+function generalChatSessionTitle(summary) {
+  const direct = typeof summary?.title === 'string' ? summary.title.trim() : '';
+  if (direct) return direct;
+  const projected = summary?.projections?.values?.title;
+  return typeof projected === 'string' ? projected.trim() : '';
+}
+
+/** Match Harness's native title suffix when it forks a named session. */
+function increasedForkTitle(title) {
+  if (typeof title !== 'string' || !title.trim()) return '';
+  const normalized = title.trim();
+  const ascii = /^(.*?)\((\d+)\)$/u.exec(normalized);
+  if (ascii?.[1] !== undefined && ascii[2] !== undefined) {
+    return `${ascii[1]}(${BigInt(ascii[2]) + 1n})`;
+  }
+  const fullWidth = /^(.*?)（(\d+)）$/u.exec(normalized);
+  if (fullWidth?.[1] !== undefined && fullWidth[2] !== undefined) {
+    return `${fullWidth[1]}（${BigInt(fullWidth[2]) + 1n}）`;
+  }
+  return `${normalized} (1)`;
+}
+
 /**
  * Resolve the conversation opened by the general-chat navigation entry.
- * Prefer an explicitly remembered top-level session. During migration from
+ * Prefer an explicitly remembered ordinary session. During migration from
  * v0.5.1, prefer a non-blank session so an accidentally-created newer blank
  * session does not hide an existing conversation.
  *
  * @param {Array<object>} summaries Rows returned by session.list.
  * @param {Array<string>} workspaceSessionIds Session ids owned by the workspace.
  * @param {string} preferredSessionId Last general-chat session selected by the user.
+ * @param {Array<string>} archivedSessionIds Registry-global archived session ids.
  * @returns {object|null}
  */
-function selectGeneralChatSession(summaries, workspaceSessionIds, preferredSessionId = '') {
+function selectGeneralChatSession(summaries, workspaceSessionIds, preferredSessionId = '', archivedSessionIds = []) {
   if (!Array.isArray(summaries) || !Array.isArray(workspaceSessionIds)) return null;
   const membership = new Set(workspaceSessionIds.filter(id => typeof id === 'string'));
+  const archived = new Set(Array.isArray(archivedSessionIds)
+    ? archivedSessionIds.filter(id => typeof id === 'string')
+    : []);
   const candidates = summaries.filter(summary => summary
     && typeof summary.sessionId === 'string'
     && membership.has(summary.sessionId)
+    && !archived.has(summary.sessionId)
     && summary.origin !== 'subagent'
-    && !summary.parentSessionId);
+  );
   const preferred = candidates.find(summary => summary.sessionId === preferredSessionId);
   if (preferred) return preferred;
   return candidates.sort((left, right) => {
@@ -64,30 +92,39 @@ function selectGeneralChatSession(summaries, workspaceSessionIds, preferredSessi
 /**
  * Build the visible history shown below the desktop general-chat entry.
  * Blank sessions stay hidden unless currently selected, matching Harness's
- * native sidebar while preserving access to every real top-level chat.
+ * native sidebar. Ordinary forks remain visible; session-backed subagents do not.
  *
  * @param {Array<object>} summaries Rows returned by session.list.
  * @param {Array<string>} workspaceSessionIds Session ids owned by the workspace.
  * @param {string} selectedSessionId Currently selected session id.
- * @returns {Array<{sessionId: string, title: string, updatedAt: number, blank: boolean}>}
+ * @param {Array<string>} archivedSessionIds Registry-global archived session ids.
+ * @returns {Array<{sessionId: string, title: string, updatedAt: number, blank: boolean, hasTitle: boolean, parentSessionId?: string}>}
  */
-function listGeneralChatSessions(summaries, workspaceSessionIds, selectedSessionId = '') {
+function listGeneralChatSessions(summaries, workspaceSessionIds, selectedSessionId = '', archivedSessionIds = []) {
   if (!Array.isArray(summaries) || !Array.isArray(workspaceSessionIds)) return [];
   const membership = new Set(workspaceSessionIds.filter(id => typeof id === 'string'));
+  const archived = new Set(Array.isArray(archivedSessionIds)
+    ? archivedSessionIds.filter(id => typeof id === 'string')
+    : []);
   return summaries
     .filter(summary => summary
       && typeof summary.sessionId === 'string'
       && membership.has(summary.sessionId)
+      && !archived.has(summary.sessionId)
       && summary.origin !== 'subagent'
-      && !summary.parentSessionId
       && (!summary.blank || summary.sessionId === selectedSessionId))
     .sort((left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0))
-    .map(summary => ({
-      sessionId: summary.sessionId,
-      title: typeof summary.title === 'string' && summary.title.trim() ? summary.title.trim() : '新对话',
-      updatedAt: Number(summary.updatedAt) || 0,
-      blank: Boolean(summary.blank)
-    }));
+    .map(summary => {
+      const title = generalChatSessionTitle(summary);
+      return {
+        sessionId: summary.sessionId,
+        title: title || '新对话',
+        updatedAt: Number(summary.updatedAt) || 0,
+        blank: Boolean(summary.blank),
+        hasTitle: Boolean(title),
+        ...(typeof summary.parentSessionId === 'string' ? { parentSessionId: summary.parentSessionId } : {})
+      };
+    });
 }
 
 module.exports = {
@@ -95,6 +132,8 @@ module.exports = {
   GENERAL_CHAT_INSTRUCTIONS,
   GENERAL_CHAT_TITLE,
   ensureGeneralChatWorkspace,
+  generalChatSessionTitle,
+  increasedForkTitle,
   listGeneralChatSessions,
   selectGeneralChatSession
 };

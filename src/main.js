@@ -13,8 +13,9 @@ const { EmbeddedBrowser, normalizeBrowserUrl } = require('./embedded-browser');
 const { LocalPreviewServer } = require('./local-preview-server');
 const { isSupportedTextFile, readWorkspaceTextFile, resolveWorkspaceTextFile, writeWorkspaceTextFile } = require('./text-file-editor');
 const { installMarketplacePlugin, listInstalled, resetMarketplaceCache, runPluginCommand, runtimePnpmPath, searchMarketplace, setPluginEnabled, updateInstalledPlugin } = require('./plugin-manager');
-const { backupConfiguration, buildDiagnosticReport, clearMarketplaceCache, redactSecrets, repairCredentialsVersion } = require('./diagnostics');
-const { ensureGeneralChatWorkspace, listGeneralChatSessions, selectGeneralChatSession } = require('./general-chat');
+const { backupConfiguration, buildDiagnosticReport, clearMarketplaceCache, credentialsVersionState, credentialFile, redactSecrets, repairCredentialsVersion } = require('./diagnostics');
+const { ensureGeneralChatWorkspace, increasedForkTitle, listGeneralChatSessions, selectGeneralChatSession } = require('./general-chat');
+const { listArchivedSessions, mutateArchivedSession, preflightArchivedSessionMutation } = require('./archived-sessions');
 
 const APP_NAME = 'DeepSeek Harness';
 const LOADING_WINDOW_SIZE = { width: 480, height: 340 };
@@ -445,6 +446,29 @@ function launchService() {
     }
   }
 
+  // Harness 0.1.1-rc.2 reads the credentials document version as a YAML
+  // number. Older desktop builds migrated it to the string "1", which makes
+  // the service exit before it can print its ready URL. Only migrate that one
+  // precisely known legacy form; unknown values are left untouched so the
+  // Harness can report the authoritative error.
+  try {
+    const home = process.env.DSH_HOME || path.join(os.homedir(), '.dsh');
+    const credentialState = credentialsVersionState(credentialFile(home));
+    if (credentialState.exists && credentialState.repairable) {
+      repairCredentialsVersion({ home });
+      sendToLoading('startup:progress', {
+        pct: 7,
+        label: '已备份并迁移旧版凭据格式，正在继续启动…'
+      });
+    }
+  } catch (error) {
+    showStartupError({
+      message: '凭据配置迁移失败',
+      detail: `${error.message}\n\n原文件未被覆盖，请检查 .dsh 目录的写入权限。`
+    });
+    return;
+  }
+
   service = startService({
     port,
     cwd: workspace,
@@ -508,12 +532,58 @@ ipcMain.handle('startup:get-state', () => ({
 // directory so users can start a general conversation without choosing a
 // project folder.
 ipcMain.handle('general-chat:workspace', () => ensureGeneralChatWorkspace(app.getPath('userData')));
-ipcMain.handle('general-chat:select-session', (_event, summaries, workspaceSessionIds, preferredSessionId) => (
-  selectGeneralChatSession(summaries, workspaceSessionIds, preferredSessionId)
+ipcMain.handle('general-chat:select-session', (_event, summaries, workspaceSessionIds, preferredSessionId, archivedSessionIds) => (
+  selectGeneralChatSession(summaries, workspaceSessionIds, preferredSessionId, archivedSessionIds)
 ));
-ipcMain.handle('general-chat:list-sessions', (_event, summaries, workspaceSessionIds, selectedSessionId) => (
-  listGeneralChatSessions(summaries, workspaceSessionIds, selectedSessionId)
+ipcMain.handle('general-chat:list-sessions', (_event, summaries, workspaceSessionIds, selectedSessionId, archivedSessionIds) => (
+  listGeneralChatSessions(summaries, workspaceSessionIds, selectedSessionId, archivedSessionIds)
 ));
+ipcMain.handle('general-chat:fork-title', (_event, title) => increasedForkTitle(title));
+ipcMain.handle('archive:list', (_event, summaries, workspaces, archivedSessionIds) => (
+  listArchivedSessions(summaries, workspaces, archivedSessionIds)
+));
+ipcMain.handle('archive:mutate', async (_event, request) => {
+  const home = process.env.DSH_HOME || path.join(os.homedir(), '.dsh');
+  let stoppedForMutation = false;
+  try {
+    const action = request?.action;
+    const sessionId = request?.sessionId;
+    preflightArchivedSessionMutation({ home, sessionId, action });
+    if (action === 'delete') {
+      const confirmation = dialog.showMessageBoxSync(mainWindow, {
+        type: 'warning',
+        title: '永久删除归档对话',
+        message: '确定永久删除这个归档对话吗？',
+        detail: '它会从 DSH 的会话列表和日志存储中移除。桌面端会保留一份维护备份，但界面中无法直接恢复。',
+        buttons: ['取消', '永久删除'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true
+      });
+      if (confirmation !== 1) return { ok: false, cancelled: true, message: '已取消删除' };
+    }
+    if (service) {
+      quitting = true;
+      await service.stop();
+      service = null;
+      stoppedForMutation = true;
+    }
+    const result = mutateArchivedSession({ home, sessionId, action });
+    setTimeout(() => {
+      app.relaunch();
+      app.quit();
+    }, 120);
+    return { ok: true, restarting: true, ...result };
+  } catch (error) {
+    if (stoppedForMutation) {
+      setTimeout(() => {
+        app.relaunch();
+        app.quit();
+      }, 120);
+    }
+    return { ok: false, message: error && error.message ? error.message : String(error) };
+  }
+});
 
 // --- IPC for the appearance feature ---
 ipcMain.handle('appearance:get', () => loadSettings().appearance);

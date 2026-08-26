@@ -25,11 +25,14 @@ const ROW_ID = 'dsh-desktop-appearance-row';
 const GENERAL_CHAT_BUTTON_ID = 'dshd-general-chat';
 const GENERAL_CHAT_ROOT_ID = 'dshd-general-chat-root';
 const GENERAL_CHAT_HISTORY_ID = 'dshd-general-chat-history';
+const ARCHIVE_BUTTON_ID = 'dshd-archive-button';
+const ARCHIVE_DIALOG_ID = 'dshd-archive-dialog';
 const GENERAL_CHAT_TITLE = '通用对话';
 const GENERAL_CHAT_SESSION_IDS_KEY = 'dshd.general-chat.sessions';
 const GENERAL_CHAT_LAST_SESSION_KEY = 'dshd.general-chat.last-session';
 const GENERAL_CHAT_EXPANDED_KEY = 'dshd.general-chat.expanded';
 const GENERAL_CHAT_NOTICE_KEY = 'dshd.general-chat.notice';
+let closeGeneralChatMenu = null;
 
 // ---------- color utils ----------
 
@@ -2533,6 +2536,19 @@ const GENERAL_CHAT_CSS = `
   width: 16px;
   height: 16px;
 }
+.dshd-general-chat-archive {
+  width: auto;
+  min-width: 30px;
+  gap: 5px;
+  padding: 0 7px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.dshd-general-chat-archive svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
 .dshd-general-chat-toggle svg {
   transition: transform .16s ease;
 }
@@ -2561,10 +2577,17 @@ const GENERAL_CHAT_CSS = `
 #${GENERAL_CHAT_ROOT_ID}[data-expanded="true"] #${GENERAL_CHAT_HISTORY_ID} {
   display: block;
 }
-.dshd-general-chat-session {
+.dshd-general-chat-session-row {
+  position: relative;
   display: flex;
   align-items: center;
   width: 100%;
+  height: 34px;
+  border-radius: 6px;
+}
+.dshd-general-chat-session {
+  flex: 1 1 auto;
+  min-width: 0;
   height: 34px;
   padding: 0 9px;
   border: 0;
@@ -2576,24 +2599,280 @@ const GENERAL_CHAT_CSS = `
   text-align: left;
   cursor: pointer;
 }
-.dshd-general-chat-session:hover {
-  color: var(--dsw-alias-label-primary);
+.dshd-general-chat-session-row:hover,
+.dshd-general-chat-session-row[data-menu-open="true"] {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+.dshd-general-chat-session:hover,
+.dshd-general-chat-session-row[data-menu-open="true"] .dshd-general-chat-session {
+  color: var(--dsw-alias-label-primary);
+  background: transparent;
 }
 .dshd-general-chat-session[data-active="true"] {
   color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, var(--dsw-static-deepseek-450));
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
+.dshd-general-chat-session-row[data-menu-open="true"] .dshd-general-chat-session[data-active="true"] {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
 .dshd-general-chat-session-title {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.dshd-general-chat-session-menu-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary, #8a94a3);
+  font: inherit;
+  font-size: 18px;
+  line-height: 18px;
+  cursor: pointer;
+  opacity: 0;
+}
+.dshd-general-chat-session-row:hover .dshd-general-chat-session-menu-button,
+.dshd-general-chat-session-row[data-menu-open="true"] .dshd-general-chat-session-menu-button,
+.dshd-general-chat-session-menu-button:focus-visible {
+  opacity: 1;
+}
+.dshd-general-chat-session-menu-button:hover {
+  color: var(--dsw-alias-label-primary);
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.dshd-general-chat-menu {
+  position: fixed;
+  z-index: 2147483644;
+  min-width: 170px;
+  padding: 6px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 143, 166, .24));
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-base, #fff));
+  color: var(--dsw-alias-label-primary, #202735);
+  box-shadow: 0 12px 32px rgba(12, 28, 48, .18);
+}
+.dshd-general-chat-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.dshd-general-chat-menu-item:hover:not(:disabled),
+.dshd-general-chat-menu-item:focus-visible {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(127, 143, 166, .12));
+  outline: none;
+}
+.dshd-general-chat-menu-item:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+.dshd-general-chat-menu-item svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.dshd-general-chat-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483645;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 18, 32, .32);
+}
+.dshd-general-chat-dialog {
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 40px));
+  padding: 20px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 143, 166, .24));
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-base, #fff));
+  color: var(--dsw-alias-label-primary, #202735);
+  box-shadow: 0 20px 60px rgba(5, 18, 36, .28);
+}
+.dshd-general-chat-dialog h2 {
+  margin: 0 0 14px;
+  font-size: 17px;
+  line-height: 24px;
+}
+.dshd-general-chat-dialog input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 143, 166, .38));
+  border-radius: 7px;
+  outline: none;
+  background: var(--dsw-alias-bg-base, #fff);
+  color: inherit;
+  font: inherit;
+}
+.dshd-general-chat-dialog input:focus {
+  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4e83d4);
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 12%, transparent);
+}
+.dshd-general-chat-dialog-error {
+  min-height: 18px;
+  margin-top: 8px;
+  color: #d94b4b;
+  font-size: 12px;
+}
+.dshd-general-chat-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.dshd-general-chat-dialog-actions button {
+  min-width: 72px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 143, 166, .28));
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.dshd-general-chat-dialog-actions button[type="submit"] {
+  border-color: transparent;
+  background: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4e83d4);
+  color: #fff;
+}
+.dshd-general-chat-dialog-actions button:disabled {
+  cursor: wait;
+  opacity: .58;
+}
 .dshd-general-chat-empty {
   padding: 7px 9px;
   color: var(--dsw-alias-label-tertiary, #8a94a3);
   font-size: 12px;
+}
+.dshd-archive-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483645;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 18, 32, .38);
+  backdrop-filter: blur(3px);
+}
+.dshd-archive-dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: min(760px, calc(100vw - 48px));
+  max-height: min(720px, calc(100vh - 48px));
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 143, 166, .24));
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-base, #fff));
+  color: var(--dsw-alias-label-primary, #202735);
+  box-shadow: 0 28px 90px rgba(5, 18, 36, .32);
+}
+.dshd-archive-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--dsw-alias-stroke, rgba(127, 143, 166, .2));
+}
+.dshd-archive-heading { flex: 1; min-width: 0; }
+.dshd-archive-heading h2 { margin: 0; font-size: 18px; line-height: 26px; }
+.dshd-archive-heading p {
+  margin: 4px 0 0;
+  color: var(--dsw-alias-label-secondary, #687386);
+  font-size: 12px;
+  line-height: 18px;
+}
+.dshd-archive-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font-size: 22px;
+  line-height: 28px;
+  cursor: pointer;
+}
+.dshd-archive-close:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(127, 143, 166, .12)); }
+.dshd-archive-list { padding: 8px; overflow-y: auto; }
+.dshd-archive-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 66px;
+  padding: 8px 12px;
+  border-radius: 9px;
+}
+.dshd-archive-row:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(127, 143, 166, .08)); }
+.dshd-archive-info { flex: 1; min-width: 0; }
+.dshd-archive-title {
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary, #202735);
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dshd-archive-meta {
+  display: flex;
+  gap: 7px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary, #8a94a3);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.dshd-archive-workspace { overflow: hidden; text-overflow: ellipsis; }
+.dshd-archive-actions { flex: none; display: flex; gap: 7px; }
+.dshd-archive-actions button {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 143, 166, .3));
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dshd-archive-actions button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover, rgba(127, 143, 166, .12)); }
+.dshd-archive-actions .dshd-archive-delete { border-color: rgba(217, 75, 75, .38); color: #d94b4b; }
+.dshd-archive-actions button:disabled { cursor: wait; opacity: .52; }
+.dshd-archive-state {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 30px;
+  color: var(--dsw-alias-label-tertiary, #8a94a3);
+  font-size: 13px;
+  text-align: center;
 }
 .dshd-general-chat-toast {
   position: fixed;
@@ -2695,14 +2974,19 @@ async function loadGeneralChatState() {
     await generalChatRpc('workspace.rename', { workspaceId: workspace.workspaceId, title: managed.title });
   }
   const listed = await generalChatRpc('session.list', {});
+  const workspaceList = await generalChatRpc('workspace.list', {});
   const summaries = Array.isArray(listed?.items) ? listed.items : [];
   const workspaceSessionIds = Array.isArray(workspace.sessionIds) ? workspace.sessionIds : [];
-  const ids = rememberGeneralChatSessions(workspaceSessionIds);
+  const archivedSessionIds = Array.isArray(workspaceList?.archivedSessionIds)
+    ? workspaceList.archivedSessionIds.filter(id => typeof id === 'string')
+    : [];
+  const archived = new Set(archivedSessionIds);
+  const ids = rememberGeneralChatSessions(workspaceSessionIds.filter(id => !archived.has(id)));
   const selected = selectedSessionId();
   const history = await ipcRenderer.invoke(
-    'general-chat:list-sessions', summaries, workspaceSessionIds, selected
+    'general-chat:list-sessions', summaries, workspaceSessionIds, selected, archivedSessionIds
   );
-  return { workspace, summaries, workspaceSessionIds, ids, selected, history };
+  return { workspace, summaries, workspaceSessionIds, archivedSessionIds, ids, selected, history };
 }
 
 function selectGeneralChat(sessionId, ids = []) {
@@ -2721,7 +3005,8 @@ async function openGeneralChat(button, { createNew = false } = {}) {
   try {
     const state = await loadGeneralChatState();
     const restored = createNew ? null : await ipcRenderer.invoke(
-      'general-chat:select-session', state.summaries, state.workspaceSessionIds, lastGeneralChatSessionId()
+      'general-chat:select-session', state.summaries, state.workspaceSessionIds,
+      lastGeneralChatSessionId(), state.archivedSessionIds
     );
     const session = restored || await generalChatRpc('session.create', { workspaceId: state.workspace.workspaceId });
     if (!session || typeof session.sessionId !== 'string') throw new Error('通用对话会话恢复失败');
@@ -2759,12 +3044,226 @@ async function handleNativeNewSession(button) {
   }
 }
 
+function generalChatMenuIcon(kind) {
+  if (kind === 'rename') {
+    return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 16.5-.8 3.3 3.3-.8L18 8.5 15.5 6 5 16.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m13.8 7.7 2.5 2.5" stroke="currentColor" stroke-width="1.7"/></svg>';
+  }
+  if (kind === 'fork') {
+    return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="7" cy="6" r="2" stroke="currentColor" stroke-width="1.7"/><circle cx="17" cy="6" r="2" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="18" r="2" stroke="currentColor" stroke-width="1.7"/><path d="M7 8v2c0 2.2 1.8 4 4 4h1m5-6v2c0 2.2-1.8 4-4 4h-1v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+  }
+  return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 8.5h14V20H5V8.5Zm-1-4h16v4H4v-4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+}
+
+function openGeneralChatRenameDialog(session, root) {
+  document.querySelector('.dshd-general-chat-dialog-backdrop')?.remove();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'dshd-general-chat-dialog-backdrop';
+  const form = document.createElement('form');
+  form.className = 'dshd-general-chat-dialog';
+  form.setAttribute('role', 'dialog');
+  form.setAttribute('aria-modal', 'true');
+  form.setAttribute('aria-labelledby', 'dshd-general-chat-rename-title');
+  const heading = document.createElement('h2');
+  heading.id = 'dshd-general-chat-rename-title';
+  heading.textContent = '重命名会话';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = session.hasTitle ? session.title : '';
+  input.placeholder = '输入会话名称';
+  input.setAttribute('aria-label', '会话名称');
+  const error = document.createElement('div');
+  error.className = 'dshd-general-chat-dialog-error';
+  error.setAttribute('role', 'alert');
+  const actions = document.createElement('div');
+  actions.className = 'dshd-general-chat-dialog-actions';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = '取消';
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.textContent = '保存';
+  actions.append(cancel, submit);
+  form.append(heading, input, error, actions);
+  backdrop.appendChild(form);
+  document.body.appendChild(backdrop);
+  let busy = false;
+  const close = () => {
+    if (busy) return;
+    backdrop.remove();
+  };
+  cancel.addEventListener('click', close);
+  backdrop.addEventListener('pointerdown', (event) => {
+    if (event.target === backdrop) close();
+  });
+  backdrop.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+    }
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const title = input.value.trim();
+    if (!title) {
+      error.textContent = '会话名称不能为空';
+      input.focus();
+      return;
+    }
+    busy = true;
+    input.disabled = true;
+    cancel.disabled = true;
+    submit.disabled = true;
+    submit.textContent = '保存中…';
+    error.textContent = '';
+    try {
+      await generalChatRpc('session.rename', { sessionId: session.sessionId, title });
+      busy = false;
+      backdrop.remove();
+      showGeneralChatNotice('会话已重命名');
+      await refreshGeneralChatHistory(root);
+    } catch (reason) {
+      busy = false;
+      input.disabled = false;
+      cancel.disabled = false;
+      submit.disabled = false;
+      submit.textContent = '保存';
+      error.textContent = reason && reason.message ? reason.message : String(reason);
+      input.focus();
+    }
+  });
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 0);
+}
+
+async function forkGeneralChatSession(session) {
+  try {
+    const state = await loadGeneralChatState();
+    if (!state.ids.includes(session.sessionId)) throw new Error('该会话已不在通用对话中');
+    const forked = await generalChatRpc('session.fork', { sessionId: session.sessionId });
+    if (!forked || typeof forked.sessionId !== 'string') throw new Error('分叉结果缺少新会话 ID');
+    let notice = '已分叉会话';
+    if (session.hasTitle) {
+      const title = await ipcRenderer.invoke('general-chat:fork-title', session.title);
+      if (title) {
+        try {
+          await generalChatRpc('session.rename', { sessionId: forked.sessionId, title });
+        } catch (reason) {
+          notice = `分叉成功，标题更新失败：${reason && reason.message ? reason.message : String(reason)}`;
+        }
+      }
+    }
+    localStorage.setItem(GENERAL_CHAT_NOTICE_KEY, notice);
+    selectGeneralChat(forked.sessionId, state.ids);
+  } catch (reason) {
+    showGeneralChatNotice(`分叉失败：${reason && reason.message ? reason.message : String(reason)}`);
+    console.error('[dsh-desktop] general chat fork failed:', reason);
+  }
+}
+
+async function archiveGeneralChatSession(session, root) {
+  try {
+    const state = await loadGeneralChatState();
+    if (!state.ids.includes(session.sessionId)) throw new Error('该会话已归档或不在通用对话中');
+    const result = await generalChatRpc('workspace.archiveSession', { sessionId: session.sessionId });
+    const archivedSessionIds = Array.isArray(result?.archivedSessionIds)
+      ? result.archivedSessionIds.filter(id => typeof id === 'string')
+      : [...state.archivedSessionIds, session.sessionId];
+    if (state.selected !== session.sessionId) {
+      showGeneralChatNotice('会话已归档');
+      await refreshGeneralChatHistory(root);
+      return;
+    }
+    const fallback = await ipcRenderer.invoke(
+      'general-chat:select-session', state.summaries, state.workspaceSessionIds, '', archivedSessionIds
+    );
+    const next = fallback || await generalChatRpc('session.create', { workspaceId: state.workspace.workspaceId });
+    if (!next || typeof next.sessionId !== 'string') throw new Error('归档后无法打开备用会话');
+    localStorage.setItem(GENERAL_CHAT_NOTICE_KEY, '会话已归档');
+    selectGeneralChat(next.sessionId, state.ids.filter(id => id !== session.sessionId));
+  } catch (reason) {
+    showGeneralChatNotice(`归档失败：${reason && reason.message ? reason.message : String(reason)}`);
+    console.error('[dsh-desktop] general chat archive failed:', reason);
+  }
+}
+
+function openGeneralChatSessionMenu(anchor, row, session, root) {
+  if (typeof closeGeneralChatMenu === 'function') closeGeneralChatMenu();
+  const menu = document.createElement('div');
+  menu.className = 'dshd-general-chat-menu';
+  menu.setAttribute('role', 'menu');
+  const entries = [
+    { id: 'rename', label: '重命名', run: () => openGeneralChatRenameDialog(session, root) },
+    { id: 'fork', label: '分叉会话', disabled: session.blank, run: () => forkGeneralChatSession(session) },
+    { id: 'archive', label: '归档会话', run: () => archiveGeneralChatSession(session, root) }
+  ];
+  let disposed = false;
+  const cleanup = () => {
+    if (disposed) return;
+    disposed = true;
+    menu.remove();
+    row.dataset.menuOpen = 'false';
+    document.removeEventListener('pointerdown', onOutside, true);
+    document.removeEventListener('keydown', onKeydown, true);
+    window.removeEventListener('resize', cleanup);
+    window.removeEventListener('scroll', cleanup, true);
+    if (closeGeneralChatMenu === cleanup) closeGeneralChatMenu = null;
+  };
+  const onOutside = (event) => {
+    if (!menu.contains(event.target) && event.target !== anchor) cleanup();
+  };
+  const onKeydown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cleanup();
+      anchor.focus();
+    }
+  };
+  for (const entry of entries) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'dshd-general-chat-menu-item';
+    item.setAttribute('role', 'menuitem');
+    item.disabled = Boolean(entry.disabled);
+    if (entry.disabled) item.title = '空白会话还没有可分叉的已完成回合';
+    item.innerHTML = `${generalChatMenuIcon(entry.id)}<span></span>`;
+    item.querySelector('span').textContent = entry.label;
+    item.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (item.disabled) return;
+      cleanup();
+      entry.run();
+    });
+    menu.appendChild(item);
+  }
+  document.body.appendChild(menu);
+  row.dataset.menuOpen = 'true';
+  const anchorRect = anchor.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const left = Math.max(8, Math.min(window.innerWidth - menuRect.width - 8, anchorRect.right - menuRect.width));
+  const below = anchorRect.bottom + 4;
+  const top = below + menuRect.height <= window.innerHeight - 8
+    ? below
+    : Math.max(8, anchorRect.top - menuRect.height - 4);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  document.addEventListener('pointerdown', onOutside, true);
+  document.addEventListener('keydown', onKeydown, true);
+  window.addEventListener('resize', cleanup);
+  window.addEventListener('scroll', cleanup, true);
+  closeGeneralChatMenu = cleanup;
+  menu.querySelector('.dshd-general-chat-menu-item:not(:disabled)')?.focus();
+}
+
 async function refreshGeneralChatHistory(root) {
   const history = root.querySelector(`#${GENERAL_CHAT_HISTORY_ID}`);
   const button = root.querySelector(`#${GENERAL_CHAT_BUTTON_ID}`);
   if (!history || !button || root.dataset.loading === 'true') return;
   root.dataset.loading = 'true';
   try {
+    if (typeof closeGeneralChatMenu === 'function') closeGeneralChatMenu();
     const state = await loadGeneralChatState();
     button.dataset.active = String(state.ids.includes(state.selected));
     history.replaceChildren();
@@ -2777,6 +3276,10 @@ async function refreshGeneralChatHistory(root) {
     }
     for (const session of state.history) {
       if (!session || typeof session.sessionId !== 'string') continue;
+      const row = document.createElement('div');
+      row.className = 'dshd-general-chat-session-row';
+      row.dataset.menuOpen = 'false';
+      row.setAttribute('role', 'treeitem');
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'dshd-general-chat-session';
@@ -2787,7 +3290,20 @@ async function refreshGeneralChatHistory(root) {
       title.textContent = session.title;
       item.appendChild(title);
       item.addEventListener('click', () => selectGeneralChat(session.sessionId, state.ids));
-      history.appendChild(item);
+      const menuButton = document.createElement('button');
+      menuButton.type = 'button';
+      menuButton.className = 'dshd-general-chat-session-menu-button';
+      menuButton.textContent = '···';
+      menuButton.title = `会话“${session.title}”的操作`;
+      menuButton.setAttribute('aria-label', `会话“${session.title}”的操作`);
+      menuButton.setAttribute('aria-haspopup', 'menu');
+      menuButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openGeneralChatSessionMenu(menuButton, row, session, root);
+      });
+      row.append(item, menuButton);
+      history.appendChild(row);
     }
   } catch (error) {
     history.replaceChildren();
@@ -2799,6 +3315,145 @@ async function refreshGeneralChatHistory(root) {
     console.error('[dsh-desktop] general chat history failed:', error);
   } finally {
     root.dataset.loading = 'false';
+  }
+}
+
+function archiveDateLabel(value) {
+  const time = Number(value);
+  if (!Number.isFinite(time) || time <= 0) return '时间未知';
+  try {
+    return new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+    }).format(new Date(time));
+  } catch {
+    return new Date(time).toLocaleString();
+  }
+}
+
+async function loadArchivedSessions() {
+  const [listed, workspaceList] = await Promise.all([
+    generalChatRpc('session.list', {}),
+    generalChatRpc('workspace.list', {})
+  ]);
+  return ipcRenderer.invoke(
+    'archive:list',
+    Array.isArray(listed?.items) ? listed.items : [],
+    Array.isArray(workspaceList?.items) ? workspaceList.items : [],
+    Array.isArray(workspaceList?.archivedSessionIds) ? workspaceList.archivedSessionIds : []
+  );
+}
+
+async function runArchivedSessionAction(row, action, controls, status) {
+  for (const control of controls) control.disabled = true;
+  status.textContent = action === 'delete' ? '正在准备删除…' : '正在准备恢复…';
+  try {
+    const result = await ipcRenderer.invoke('archive:mutate', { sessionId: row.sessionId, action });
+    if (result?.cancelled) {
+      status.textContent = archiveDateLabel(row.updatedAt);
+      for (const control of controls) control.disabled = false;
+      return;
+    }
+    if (!result?.ok) throw new Error(result?.message || '操作失败');
+    status.textContent = action === 'delete' ? '已删除，正在重启…' : '已恢复，正在重启…';
+  } catch (error) {
+    status.textContent = `失败：${error && error.message ? error.message : String(error)}`;
+    for (const control of controls) control.disabled = false;
+  }
+}
+
+async function openArchivedSessionsDialog() {
+  document.getElementById(ARCHIVE_DIALOG_ID)?.remove();
+  const backdrop = document.createElement('div');
+  backdrop.id = ARCHIVE_DIALOG_ID;
+  backdrop.className = 'dshd-archive-backdrop';
+  const dialog = document.createElement('section');
+  dialog.className = 'dshd-archive-dialog';
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
+  dialog.setAttribute('aria-labelledby', 'dshd-archive-title');
+  const header = document.createElement('header');
+  header.className = 'dshd-archive-header';
+  const heading = document.createElement('div');
+  heading.className = 'dshd-archive-heading';
+  heading.innerHTML = '<h2 id="dshd-archive-title">已归档对话</h2><p>归档不会删除内容。恢复或删除后桌面端会自动重启。</p>';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'dshd-archive-close';
+  close.setAttribute('aria-label', '关闭已归档对话');
+  close.textContent = '×';
+  const list = document.createElement('div');
+  list.className = 'dshd-archive-list';
+  const loading = document.createElement('div');
+  loading.className = 'dshd-archive-state';
+  loading.textContent = '正在加载归档记录…';
+  list.appendChild(loading);
+  header.append(heading, close);
+  dialog.append(header, list);
+  backdrop.appendChild(dialog);
+  document.body.appendChild(backdrop);
+  const dismiss = () => backdrop.remove();
+  close.addEventListener('click', dismiss);
+  backdrop.addEventListener('pointerdown', event => { if (event.target === backdrop) dismiss(); });
+  backdrop.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); dismiss(); }
+  });
+  close.focus();
+  try {
+    const rows = await loadArchivedSessions();
+    list.replaceChildren();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'dshd-archive-state';
+      empty.textContent = '暂无已归档对话';
+      list.appendChild(empty);
+      return;
+    }
+    for (const row of rows) {
+      const item = document.createElement('div');
+      item.className = 'dshd-archive-row';
+      const info = document.createElement('div');
+      info.className = 'dshd-archive-info';
+      const title = document.createElement('div');
+      title.className = 'dshd-archive-title';
+      title.textContent = row.title;
+      title.title = row.title;
+      const meta = document.createElement('div');
+      meta.className = 'dshd-archive-meta';
+      const workspace = document.createElement('span');
+      workspace.className = 'dshd-archive-workspace';
+      workspace.textContent = row.workspaceTitle;
+      workspace.title = row.workspacePath || row.workspaceTitle;
+      const separator = document.createElement('span');
+      separator.textContent = '·';
+      const status = document.createElement('span');
+      status.textContent = archiveDateLabel(row.updatedAt);
+      meta.append(workspace, separator, status);
+      info.append(title, meta);
+      const actions = document.createElement('div');
+      actions.className = 'dshd-archive-actions';
+      const restore = document.createElement('button');
+      restore.type = 'button';
+      restore.textContent = '恢复';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'dshd-archive-delete';
+      remove.textContent = '删除';
+      const controls = [restore, remove];
+      restore.disabled = !row.available;
+      remove.disabled = !row.available;
+      if (!row.available) status.textContent = '日志不可用，无法操作';
+      restore.addEventListener('click', () => runArchivedSessionAction(row, 'restore', controls, status));
+      remove.addEventListener('click', () => runArchivedSessionAction(row, 'delete', controls, status));
+      actions.append(restore, remove);
+      item.append(info, actions);
+      list.appendChild(item);
+    }
+  } catch (error) {
+    list.replaceChildren();
+    const failed = document.createElement('div');
+    failed.className = 'dshd-archive-state';
+    failed.textContent = `归档记录加载失败：${error && error.message ? error.message : String(error)}`;
+    list.appendChild(failed);
   }
 }
 
@@ -2865,6 +3520,13 @@ function installGeneralChatButton() {
   add.title = '新建通用对话';
   add.setAttribute('aria-label', '新建通用对话');
   add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const archive = document.createElement('button');
+  archive.id = ARCHIVE_BUTTON_ID;
+  archive.type = 'button';
+  archive.className = 'dshd-general-chat-action dshd-general-chat-archive';
+  archive.title = '查看已归档对话';
+  archive.setAttribute('aria-label', '查看已归档对话');
+  archive.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 8.5h14V20H5V8.5Zm-1-4h16v4H4v-4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>已归档</span>';
   const history = document.createElement('div');
   history.id = GENERAL_CHAT_HISTORY_ID;
   history.setAttribute('aria-label', '通用对话历史');
@@ -2877,7 +3539,7 @@ function installGeneralChatButton() {
   }
   button.dataset.active = String(ids.includes(selected));
   button.dataset.busy = 'false';
-  head.append(button, toggle, add);
+  head.append(button, toggle, add, archive);
   root.append(head, history);
   nativeButton.insertAdjacentElement('afterend', root);
   const syncCollapsed = () => { root.dataset.collapsed = String(root.parentElement.getBoundingClientRect().width < 100); };
@@ -2893,6 +3555,7 @@ function installGeneralChatButton() {
     if (expanded) refreshGeneralChatHistory(root);
   });
   add.addEventListener('click', () => { openGeneralChat(button, { createNew: true }); });
+  archive.addEventListener('click', openArchivedSessionsDialog);
   refreshGeneralChatHistory(root);
 }
 

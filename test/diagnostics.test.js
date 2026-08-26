@@ -19,16 +19,40 @@ test('redacts common API key and authorization formats', () => {
   assert.match(value, /REDACTED/);
 });
 
-test('detects and repairs a numeric credentials version with a backup', (t) => {
+test('detects and repairs the legacy string credentials version with a backup', (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-diagnostics-home-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
   const file = path.join(home, '.credentials.yaml');
-  fs.writeFileSync(file, 'version: 1\ncredentials: {}\n');
+  const original = 'version: "1" # legacy\ncredentials:\n  api_key: TEST_VALUE_MUST_NOT_CHANGE\n';
+  fs.writeFileSync(file, original);
   assert.equal(credentialsVersionState(file).valid, false);
   const result = repairCredentialsVersion({ home });
   assert.equal(result.changed, true);
   assert.equal(credentialsVersionState(file).valid, true);
   assert.equal(fs.existsSync(result.backup), true);
+  assert.equal(fs.readFileSync(result.backup, 'utf8'), original);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'version: 1 # legacy\ncredentials:\n  api_key: TEST_VALUE_MUST_NOT_CHANGE\n');
+});
+
+test('leaves the current numeric credentials version unchanged', (t) => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-diagnostics-home-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const file = path.join(home, '.credentials.yaml');
+  const original = 'version: 1\ncredentials: {}\n';
+  fs.writeFileSync(file, original);
+  const result = repairCredentialsVersion({ home });
+  assert.equal(result.changed, false);
+  assert.equal(fs.readFileSync(file, 'utf8'), original);
+  assert.deepEqual(fs.readdirSync(home), ['.credentials.yaml']);
+});
+
+test('refuses to rewrite an unknown credentials version', (t) => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-diagnostics-home-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const file = path.join(home, '.credentials.yaml');
+  fs.writeFileSync(file, 'version: "2"\ncredentials: {}\n');
+  assert.throws(() => repairCredentialsVersion({ home }), /无法安全自动修复/);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'version: "2"\ncredentials: {}\n');
 });
 
 test('backs up only known configuration files', (t) => {
@@ -46,7 +70,7 @@ test('backs up only known configuration files', (t) => {
 test('builds a structured report without reading credential values', async (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-diagnostics-report-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(home, '.credentials.yaml'), 'version: "1"\ncredentials: {}\n');
+  fs.writeFileSync(path.join(home, '.credentials.yaml'), 'version: 1\ncredentials: {}\n');
   const report = await buildDiagnosticReport({ home, workspace: home, networkChecks: [], serviceReady: false });
   assert.equal(report.version, 1);
   assert.equal(report.checks.find((item) => item.id === 'credentials-version').status, 'ok');
